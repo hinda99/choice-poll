@@ -10,7 +10,6 @@ import {
   Users,
   BarChart2,
   Lock,
-  ArrowRight,
   ShieldCheck,
   CheckCircle2,
 } from "lucide-react";
@@ -50,23 +49,8 @@ function PollVoteContent({
   const [isExpired, setIsExpired] = useState<boolean>(false);
   const [connectionState, setConnectionState] = useState<ConnectionState>("connected");
 
-  const [adminKey, setAdminKey] = useState<string>("");
-  const [isOwner, setIsOwner] = useState<boolean>(false);
-
-  // Check localStorage and URL query for owner adminKey
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const urlParams = new URLSearchParams(window.location.search);
-      const keyFromUrl = urlParams.get("adminKey");
-      const keyFromStorage = localStorage.getItem(`poll_admin_${id}`);
-      const effectiveKey = keyFromUrl || keyFromStorage || "";
-      if (effectiveKey) {
-        setTimeout(() => setAdminKey(effectiveKey), 0);
-        if (keyFromUrl && !keyFromStorage) {
-          localStorage.setItem(`poll_admin_${id}`, keyFromUrl);
-        }
-      }
-
       // Check if user has already voted
       const savedVote = localStorage.getItem(`voted_${id}`);
       if (savedVote) {
@@ -114,18 +98,8 @@ function PollVoteContent({
   // Data fetching + SSE sync
   useEffect(() => {
     let isMounted = true;
-    const effectiveKey =
-      adminKey ||
-      (typeof window !== "undefined"
-        ? localStorage.getItem(`poll_admin_${id}`) || ""
-        : "");
-
-    const fetchUrl = effectiveKey
-      ? `/api/polls/${id}?adminKey=${effectiveKey}`
-      : `/api/polls/${id}`;
-    const streamUrl = effectiveKey
-      ? `/api/polls/${id}/stream?adminKey=${effectiveKey}`
-      : `/api/polls/${id}/stream`;
+    const fetchUrl = `/api/polls/${id}`;
+    const streamUrl = `/api/polls/${id}/stream`;
 
     // Initial fetch
     fetch(fetchUrl)
@@ -136,7 +110,6 @@ function PollVoteContent({
       .then((data) => {
         if (isMounted) {
           setPoll(data.poll);
-          if (data.isOwner) setIsOwner(true);
           setLoading(false);
           setConnectionState("connected");
         }
@@ -182,7 +155,6 @@ function PollVoteContent({
           const data = await res.json();
           if (isMounted) {
             setPoll(data.poll);
-            if (data.isOwner) setIsOwner(true);
             setConnectionState("connected");
           }
         }
@@ -196,7 +168,7 @@ function PollVoteContent({
       if (eventSource) eventSource.close();
       clearInterval(interval);
     };
-  }, [id, adminKey]);
+  }, [id]);
 
   const handleToggleOption = (optionId: string) => {
     if (!poll) return;
@@ -330,29 +302,6 @@ function PollVoteContent({
 
   return (
     <div className="max-w-[660px] mx-auto space-y-6">
-      {/* Discreet Owner Banner if authorized */}
-      {isOwner && (
-        <div className="p-3.5 rounded-[var(--radius-control)] border border-[var(--owner)]/30 bg-[var(--warning-soft)]/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-[var(--owner)] shrink-0" />
-            <div>
-              <span className="font-semibold text-[var(--owner)]">
-                Creator preview
-              </span>
-              <span className="text-[var(--text-muted)] ml-1.5 hidden sm:inline">
-                — Regular voters do not see owner controls
-              </span>
-            </div>
-          </div>
-          <Link
-            href={`/poll/${id}/results${adminKey ? `?adminKey=${adminKey}&view=owner` : ""}`}
-            className="font-bold text-[var(--owner)] hover:underline inline-flex items-center gap-1 shrink-0"
-          >
-            <span>Owner dashboard</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-      )}
 
       {/* Status Bar Row beneath or above question */}
       <div className="flex flex-wrap items-center justify-between gap-2.5">
@@ -594,6 +543,24 @@ function PollVoteContent({
           </form>
         </Card>
       )}
+
+      {/* Footer navigation */}
+      <div className="pt-2 flex items-center justify-between text-xs text-[var(--text-muted)]">
+        <Link
+          href="/"
+          className="hover:text-[var(--primary)] transition-colors inline-flex items-center gap-1 font-medium"
+        >
+          <span>Create a new poll</span>
+        </Link>
+
+        <Link
+          href={`/poll/${id}/owner`}
+          className="hover:text-[var(--owner)] transition-colors inline-flex items-center gap-1 text-[var(--text-subtle)]"
+        >
+          <ShieldCheck className="w-3.5 h-3.5" />
+          <span>Poll owner? Owner dashboard</span>
+        </Link>
+      </div>
     </div>
   );
 }

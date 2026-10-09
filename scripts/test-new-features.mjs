@@ -58,7 +58,7 @@ async function testNewFeatures() {
 
   // 5. Voter 3 votes for 'Project Beta': Charlie Brown
   console.log("\nCharlie Brown votes for 'Project Beta'...");
-  const v3 = await (await fetch(`${baseUrl}/api/polls/${poll.id}/vote`, {
+  await (await fetch(`${baseUrl}/api/polls/${poll.id}/vote`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ optionIds: ["opt-2"], voterName: "Charlie Brown" }),

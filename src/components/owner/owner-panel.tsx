@@ -19,6 +19,7 @@ import {
   EyeOff,
   Vote,
   ExternalLink,
+  BarChart2,
 } from "lucide-react";
 
 export interface OwnerPanelProps {
@@ -38,7 +39,7 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
   const origin =
     typeof window !== "undefined" ? window.location.origin : "";
   const voterUrl = `${origin}/poll/${poll.id}`;
-  const ownerUrl = `${origin}/poll/${poll.id}/results?adminKey=${adminKey}`;
+  const ownerUrl = `${origin}/poll/${poll.id}/owner?adminKey=${adminKey}`;
 
   const handleCopyVoter = async () => {
     await navigator.clipboard.writeText(voterUrl);
@@ -165,6 +166,15 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
                 <ExternalLink className="w-3 h-3 text-[var(--text-muted)]" />
               </Link>
 
+              <Link
+                href={`/poll/${poll.id}/results`}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-muted)] text-xs font-semibold text-[var(--text)] transition-colors"
+              >
+                <BarChart2 className="w-3.5 h-3.5 text-[var(--primary)]" />
+                <span>View voter results</span>
+                <ExternalLink className="w-3 h-3 text-[var(--text-muted)]" />
+              </Link>
+
               <a
                 href={`/api/polls/${poll.id}/export?adminKey=${adminKey}`}
                 download={`poll-${poll.id}-results.csv`}
@@ -228,6 +238,32 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
                       <span>Copy link</span>
                     </>
                   )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Public Results Link */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] block">
+                Public results link
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={`${origin}/poll/${poll.id}/results`}
+                  className="flex-1 h-10 px-3 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text)] text-xs font-mono select-all focus:outline-none"
+                />
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(`${origin}/poll/${poll.id}/results`);
+                    showToast("Public results link copied");
+                  }}
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copy link</span>
                 </Button>
               </div>
             </div>

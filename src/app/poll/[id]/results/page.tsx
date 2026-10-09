@@ -20,7 +20,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useToast } from "@/components/ui/toast";
 import { VoteResultsBar } from "@/components/poll/vote-results-bar";
-import { OwnerPanel } from "@/components/owner/owner-panel";
 import { LiveConnectionStatus, ConnectionState } from "@/components/ui/live-connection-status";
 
 function PollResultsContent({
@@ -42,28 +41,6 @@ function PollResultsContent({
 
   // Optional sort toggle per Section 9 (Default: original choice order)
   const [sortByVotes, setSortByVotes] = useState(false);
-
-  const [adminKey, setAdminKey] = useState<string>("");
-  const [isOwner, setIsOwner] = useState<boolean>(false);
-  const [ownerViewMode, setOwnerViewMode] = useState<"voter" | "owner">("voter");
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const urlParams = new URLSearchParams(window.location.search);
-      const keyFromUrl = urlParams.get("adminKey");
-      const keyFromStorage = localStorage.getItem(`poll_admin_${id}`);
-      const effectiveKey = keyFromUrl || keyFromStorage || "";
-      if (effectiveKey) {
-        setTimeout(() => setAdminKey(effectiveKey), 0);
-        if (keyFromUrl && !keyFromStorage) {
-          localStorage.setItem(`poll_admin_${id}`, keyFromUrl);
-        }
-      }
-      if (urlParams.get("view") === "owner") {
-        setTimeout(() => setOwnerViewMode("owner"), 0);
-      }
-    }
-  }, [id]);
 
   useEffect(() => {
     if (!poll?.expiresAt) return;
@@ -97,18 +74,8 @@ function PollResultsContent({
 
   useEffect(() => {
     let isMounted = true;
-    const effectiveKey =
-      adminKey ||
-      (typeof window !== "undefined"
-        ? localStorage.getItem(`poll_admin_${id}`) || ""
-        : "");
-
-    const fetchUrl = effectiveKey
-      ? `/api/polls/${id}?adminKey=${effectiveKey}`
-      : `/api/polls/${id}`;
-    const streamUrl = effectiveKey
-      ? `/api/polls/${id}/stream?adminKey=${effectiveKey}`
-      : `/api/polls/${id}/stream`;
+    const fetchUrl = `/api/polls/${id}`;
+    const streamUrl = `/api/polls/${id}/stream`;
 
     // 1. Initial fetch
     fetch(fetchUrl)
@@ -119,7 +86,6 @@ function PollResultsContent({
       .then((data) => {
         if (isMounted) {
           setPoll(data.poll);
-          if (data.isOwner) setIsOwner(true);
           setLoading(false);
           setLastUpdated(new Date());
           setConnectionState("connected");
@@ -163,14 +129,11 @@ function PollResultsContent({
     const interval = setInterval(async () => {
       try {
         const res = await fetch(fetchUrl);
-        if (res.ok) {
+        if (res.ok && isMounted) {
           const data = await res.json();
-          if (isMounted) {
-            setPoll(data.poll);
-            if (data.isOwner) setIsOwner(true);
-            setLastUpdated(new Date());
-            setConnectionState("connected");
-          }
+          setPoll(data.poll);
+          setLastUpdated(new Date());
+          setConnectionState("connected");
         }
       } catch {
         if (isMounted) setConnectionState("reconnecting");
@@ -182,7 +145,7 @@ function PollResultsContent({
       if (eventSource) eventSource.close();
       clearInterval(interval);
     };
-  }, [id, adminKey]);
+  }, [id]);
 
   const handleCopyLink = async () => {
     if (typeof window !== "undefined") {
@@ -263,58 +226,11 @@ function PollResultsContent({
     displayedOptions.sort((a, b) => b.votes - a.votes);
   }
 
-  // Denominator for choice vote share:
-  // In single-choice: totalVoters (which equals totalSelections).
-  // In multi-choice: totalVoters (percentage of respondents/voters who picked this option).
+  // Denominator for choice vote share
   const calculationBase = totalVoters;
 
   return (
     <div className="max-w-[1000px] mx-auto space-y-8">
-      {/* Discreet Owner View Switcher (Only visible to verified poll creator) */}
-      {isOwner && adminKey && (
-        <div className="p-3.5 rounded-[var(--radius-control)] border border-[var(--owner)]/30 bg-[var(--surface)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-[var(--owner)] shrink-0" />
-            <div>
-              <span className="font-bold text-[var(--owner)]">
-                {ownerViewMode === "voter" ? "Voter view preview" : "Owner dashboard active"}
-              </span>
-              <span className="text-[var(--text-muted)] ml-1.5 hidden md:inline">
-                {ownerViewMode === "voter"
-                  ? "— Showing exactly what voters see. Owner controls are hidden."
-                  : "— Showing private response logs and administrative tools."}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1 p-0.5 rounded-lg bg-[var(--surface-muted)] border border-[var(--border)] shrink-0">
-            <button
-              type="button"
-              onClick={() => setOwnerViewMode("voter")}
-              className={`px-3 py-1.5 rounded-md font-semibold text-xs transition-colors cursor-pointer ${
-                ownerViewMode === "voter"
-                  ? "bg-[var(--surface)] text-[var(--text)] shadow-xs"
-                  : "text-[var(--text-muted)] hover:text-[var(--text)]"
-              }`}
-            >
-              Voter view
-            </button>
-            <button
-              type="button"
-              onClick={() => setOwnerViewMode("owner")}
-              className={`px-3 py-1.5 rounded-md font-semibold text-xs transition-colors cursor-pointer flex items-center gap-1.5 ${
-                ownerViewMode === "owner"
-                  ? "bg-[var(--owner)] text-white shadow-xs"
-                  : "text-[var(--text-muted)] hover:text-[var(--text)]"
-              }`}
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Owner dashboard</span>
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* 1. Poll question + Top controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-[var(--border)]">
         <div className="space-y-1.5 min-w-0 flex-1">
@@ -360,7 +276,7 @@ function PollResultsContent({
         </div>
       </div>
 
-      {/* 3. Three KPI cards per Section 9 */}
+      {/* 2. Three KPI cards per Section 9 */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* KPI 1: Total votes / Total voters (accurate metric semantics) */}
         <Card className="p-5 space-y-1 bg-[var(--surface)]">
@@ -429,7 +345,7 @@ function PollResultsContent({
         </Card>
       </div>
 
-      {/* 4. Vote distribution (Horizontal bars) */}
+      {/* 3. Vote distribution (Horizontal bars) */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
@@ -502,25 +418,18 @@ function PollResultsContent({
         </div>
       </div>
 
-      {/* 5. Owner Controls (Authenticated creator only when owner mode is active) */}
-      {isOwner && adminKey && ownerViewMode === "owner" && (
-        <OwnerPanel poll={poll} adminKey={adminKey} />
-      )}
+      {/* 4. Voter Privacy Disclosure */}
+      <div className="p-4 rounded-[var(--radius-card)] bg-[var(--surface-muted)]/50 border border-[var(--border)] text-center text-xs text-[var(--text-muted)] space-y-1">
+        <p className="font-semibold text-[var(--text)]">
+          🔒 Private public results
+        </p>
+        <p>
+          People vote without registering. Individual voter names and responses are private and accessible only to the poll creator in the owner dashboard.
+        </p>
+      </div>
 
-      {/* 6. Voter Privacy Disclosure for non-owners */}
-      {!isOwner && (
-        <div className="p-4 rounded-[var(--radius-card)] bg-[var(--surface-muted)]/50 border border-[var(--border)] text-center text-xs text-[var(--text-muted)] space-y-1">
-          <p className="font-semibold text-[var(--text)]">
-            🔒 Private public results
-          </p>
-          <p>
-            People vote without registering. Individual names and responses are visible only to the poll creator.
-          </p>
-        </div>
-      )}
-
-      {/* 7. Footer navigation */}
-      <div className="pt-4 flex items-center justify-between text-xs text-[var(--text-muted)]">
+      {/* 5. Footer navigation */}
+      <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[var(--text-muted)]">
         <Link
           href={`/poll/${id}`}
           className="hover:text-[var(--primary)] transition-colors inline-flex items-center gap-1 font-medium"
@@ -529,13 +438,23 @@ function PollResultsContent({
           <span>Back to poll</span>
         </Link>
 
-        <Link
-          href="/"
-          className="hover:text-[var(--primary)] transition-colors inline-flex items-center gap-1 font-medium"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Create a new poll</span>
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href={`/poll/${id}/owner`}
+            className="hover:text-[var(--owner)] transition-colors inline-flex items-center gap-1 font-medium text-[var(--text-subtle)]"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Poll creator? Owner dashboard</span>
+          </Link>
+
+          <Link
+            href="/"
+            className="hover:text-[var(--primary)] transition-colors inline-flex items-center gap-1 font-medium"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Create a new poll</span>
+          </Link>
+        </div>
       </div>
     </div>
   );

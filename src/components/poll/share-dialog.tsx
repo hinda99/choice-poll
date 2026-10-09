@@ -29,7 +29,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
     typeof window !== "undefined" ? window.location.origin : "";
   const voterUrl = `${origin}/poll/${pollId}`;
   const ownerUrl = creatorKey
-    ? `${origin}/poll/${pollId}/results?adminKey=${creatorKey}`
+    ? `${origin}/poll/${pollId}/owner?adminKey=${creatorKey}`
     : "";
 
   const handleCopyVoter = async () => {
