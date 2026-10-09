@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Plus } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { LanguageToggle } from "@/components/ui/language-toggle";
 import { useLanguage } from "@/lib/language-context";
@@ -43,14 +42,6 @@ export default function Navbar() {
         <div className="flex items-center gap-2 sm:gap-3">
           <LanguageToggle />
           <ThemeToggle />
-
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-[var(--radius-control)] bg-[var(--primary)] text-[var(--on-primary)] hover:bg-[var(--primary-hover)] text-xs font-semibold shadow-xs transition-colors focus-ring"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span className="hidden xs:inline sm:inline">{t.navbar.createPoll}</span>
-          </Link>
         </div>
       </div>
     </header>

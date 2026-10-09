@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Sun, Moon, Monitor } from "lucide-react";
+import { Sun, Moon } from "lucide-react";
 
-export type Theme = "light" | "dark" | "system";
+export type Theme = "light" | "dark";
 
 function applyTheme(t: Theme) {
   if (typeof document === "undefined") return;
@@ -11,16 +11,6 @@ function applyTheme(t: Theme) {
   if (t === "dark") {
     root.classList.add("dark");
     root.setAttribute("data-theme", "dark");
-  } else if (t === "light") {
-    root.classList.remove("dark");
-    root.setAttribute("data-theme", "light");
-  } else if (t === "system") {
-    root.removeAttribute("data-theme");
-    if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
   } else {
     root.classList.remove("dark");
     root.setAttribute("data-theme", "light");
@@ -30,18 +20,15 @@ function applyTheme(t: Theme) {
 function subscribe(callback: () => void) {
   if (typeof window === "undefined") return () => {};
   window.addEventListener("storage", callback);
-  const media = window.matchMedia("(prefers-color-scheme: dark)");
-  media.addEventListener("change", callback);
   return () => {
     window.removeEventListener("storage", callback);
-    media.removeEventListener("change", callback);
   };
 }
 
 function getSnapshot(): Theme {
   if (typeof window === "undefined") return "light";
   const stored = localStorage.getItem("choice-theme") as Theme | null;
-  return stored && ["light", "dark", "system"].includes(stored)
+  return stored && ["light", "dark"].includes(stored)
     ? stored
     : "light";
 }
@@ -69,7 +56,7 @@ export const ThemeToggle: React.FC = () => {
   };
 
   if (!mounted) {
-    return <div className="w-20 h-8" aria-hidden="true" />;
+    return <div className="w-14 h-8" aria-hidden="true" />;
   }
 
   return (
@@ -103,19 +90,6 @@ export const ThemeToggle: React.FC = () => {
         }`}
       >
         <Moon className="w-3.5 h-3.5" />
-      </button>
-      <button
-        type="button"
-        onClick={() => handleSelect("system")}
-        aria-label="System theme"
-        aria-pressed={theme === "system"}
-        className={`p-1.5 rounded-md transition-colors cursor-pointer ${
-          theme === "system"
-            ? "bg-[var(--surface)] text-[var(--text)] shadow-xs"
-            : "hover:text-[var(--text)]"
-        }`}
-      >
-        <Monitor className="w-3.5 h-3.5" />
       </button>
     </div>
   );
