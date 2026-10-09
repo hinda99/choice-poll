@@ -1,4 +1,7 @@
+"use client";
+
 import React from "react";
+import { useLanguage } from "@/lib/language-context";
 
 export type ConnectionState = "connected" | "reconnecting" | "disconnected";
 
@@ -9,21 +12,23 @@ export interface LiveConnectionStatusProps {
 export const LiveConnectionStatus: React.FC<LiveConnectionStatusProps> = ({
   status,
 }) => {
+  const { t } = useLanguage();
+
   const configs = {
     connected: {
-      text: "Live",
+      text: t.liveStatus.connected,
       dotClass: "bg-[var(--success)]",
       containerClass:
         "bg-[var(--success-soft)] text-[var(--success)] border-[var(--success)]/20",
     },
     reconnecting: {
-      text: "Reconnecting…",
+      text: t.liveStatus.reconnecting,
       dotClass: "bg-[var(--warning)] animate-pulse",
       containerClass:
         "bg-[var(--warning-soft)] text-[var(--warning)] border-[var(--warning)]/20",
     },
     disconnected: {
-      text: "Updates paused",
+      text: t.liveStatus.disconnected,
       dotClass: "bg-[var(--danger)]",
       containerClass:
         "bg-[var(--danger-soft)] text-[var(--danger)] border-[var(--danger)]/20",

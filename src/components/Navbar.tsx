@@ -1,8 +1,14 @@
+"use client";
+
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { LanguageToggle } from "@/components/ui/language-toggle";
+import { useLanguage } from "@/lib/language-context";
 
 export default function Navbar() {
+  const { t } = useLanguage();
+
   return (
     <header className="h-16 sm:h-18 border-b border-[var(--border)] bg-[var(--surface)]/90 backdrop-blur-md sticky top-0 z-40 transition-colors">
       <div className="max-w-[1120px] mx-auto px-4 sm:px-6 md:px-8 h-full flex items-center justify-between">
@@ -10,7 +16,7 @@ export default function Navbar() {
         <Link
           href="/"
           className="flex items-center gap-2.5 group focus-ring rounded-lg p-1"
-          aria-label="Choice home"
+          aria-label={t.navbar.brandHomeAria}
         >
           {/* Minimalist geometric logomark: two converging choice paths forming a crisp check */}
           <div className="w-8 h-8 rounded-[8px] bg-[var(--primary)] flex items-center justify-center text-[var(--on-primary)] shadow-xs transition-transform group-hover:scale-105">
@@ -34,7 +40,8 @@ export default function Navbar() {
         </Link>
 
         {/* Contextual Actions on Right */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <LanguageToggle />
           <ThemeToggle />
 
           <Link
@@ -42,7 +49,7 @@ export default function Navbar() {
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-[var(--radius-control)] bg-[var(--primary)] text-[var(--on-primary)] hover:bg-[var(--primary-hover)] text-xs font-semibold shadow-xs transition-colors focus-ring"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Create poll</span>
+            <span className="hidden xs:inline sm:inline">{t.navbar.createPoll}</span>
           </Link>
         </div>
       </div>

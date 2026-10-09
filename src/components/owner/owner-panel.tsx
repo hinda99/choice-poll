@@ -21,6 +21,7 @@ import {
   ExternalLink,
   BarChart2,
 } from "lucide-react";
+import { useLanguage } from "@/lib/language-context";
 
 export interface OwnerPanelProps {
   poll: Poll;
@@ -28,6 +29,7 @@ export interface OwnerPanelProps {
 }
 
 export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<"overview" | "responses" | "share">(
     "overview"
@@ -44,14 +46,14 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
   const handleCopyVoter = async () => {
     await navigator.clipboard.writeText(voterUrl);
     setCopiedVoter(true);
-    showToast("Voter link copied to clipboard");
+    showToast(t.owner.toastVoterCopied);
     setTimeout(() => setCopiedVoter(false), 2000);
   };
 
   const handleCopyOwner = async () => {
     await navigator.clipboard.writeText(ownerUrl);
     setCopiedOwner(true);
-    showToast("Secret owner link copied to clipboard", "warning");
+    showToast(t.owner.toastOwnerCopied, "warning");
     setTimeout(() => setCopiedOwner(false), 2000);
   };
 
@@ -64,10 +66,10 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
         <div className="flex items-center gap-2.5">
           <Badge variant="owner" className="py-1 px-2.5 gap-1.5 text-xs">
             <ShieldCheck className="w-4 h-4 text-[var(--owner)]" />
-            <span>Owner controls</span>
+            <span>{t.owner.ownerControls}</span>
           </Badge>
           <span className="text-xs text-[var(--text-muted)]">
-            Private management for poll creator
+            {t.owner.privateManagementNotice}
           </span>
         </div>
 
@@ -87,7 +89,7 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
                 : "text-[var(--text-muted)] hover:text-[var(--text)]"
             }`}
           >
-            Overview
+            {t.owner.tabOverview}
           </button>
           <button
             type="button"
@@ -101,7 +103,7 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
             }`}
           >
             <ListOrdered className="w-3.5 h-3.5" />
-            <span>Responses ({responseCount})</span>
+            <span>{t.owner.tabResponses(responseCount)}</span>
           </button>
           <button
             type="button"
@@ -115,7 +117,7 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
             }`}
           >
             <Share2 className="w-3.5 h-3.5" />
-            <span>Share & export</span>
+            <span>{t.owner.tabShare}</span>
           </button>
         </div>
       </div>
@@ -128,7 +130,7 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="p-3.5 rounded-[var(--radius-control)] bg-[var(--surface-muted)] border border-[var(--border)]">
                 <span className="text-xs text-[var(--text-muted)] block">
-                  Total voters recorded
+                  {t.owner.totalVotersRecorded}
                 </span>
                 <span className="text-xl font-bold font-mono tabular-nums text-[var(--text)] block mt-1">
                   {responseCount}
@@ -136,22 +138,22 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
               </div>
               <div className="p-3.5 rounded-[var(--radius-control)] bg-[var(--surface-muted)] border border-[var(--border)]">
                 <span className="text-xs text-[var(--text-muted)] block">
-                  Poll mode
+                  {t.owner.pollMode}
                 </span>
                 <span className="text-sm font-semibold text-[var(--text)] block mt-1">
                   {poll.isEliminationMode
-                    ? `Elimination (Max ${poll.maxPerOption || 1})`
+                    ? t.owner.modeElimination(poll.maxPerOption || 1)
                     : poll.isMultipleChoice
-                    ? "Multiple choice"
-                    : "Single choice"}
+                    ? t.owner.modeMultiple
+                    : t.owner.modeSingle}
                 </span>
               </div>
               <div className="p-3.5 rounded-[var(--radius-control)] bg-[var(--surface-muted)] border border-[var(--border)]">
                 <span className="text-xs text-[var(--text-muted)] block">
-                  Total vote limit
+                  {t.owner.totalVoteLimit}
                 </span>
                 <span className="text-sm font-semibold text-[var(--text)] block mt-1">
-                  {poll.maxTotalVotes ? `${poll.maxTotalVotes} votes` : "No limit"}
+                  {poll.maxTotalVotes ? t.owner.voteLimitCount(poll.maxTotalVotes) : t.owner.noLimit}
                 </span>
               </div>
             </div>
@@ -162,7 +164,7 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
                 className="inline-flex items-center gap-2 px-3.5 py-2 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-muted)] text-xs font-semibold text-[var(--text)] transition-colors"
               >
                 <Vote className="w-3.5 h-3.5 text-[var(--primary)]" />
-                <span>Open voter view</span>
+                <span>{t.owner.openVoterView}</span>
                 <ExternalLink className="w-3 h-3 text-[var(--text-muted)]" />
               </Link>
 
@@ -171,7 +173,7 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
                 className="inline-flex items-center gap-2 px-3.5 py-2 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-muted)] text-xs font-semibold text-[var(--text)] transition-colors"
               >
                 <BarChart2 className="w-3.5 h-3.5 text-[var(--primary)]" />
-                <span>View voter results</span>
+                <span>{t.owner.viewVoterResults}</span>
                 <ExternalLink className="w-3 h-3 text-[var(--text-muted)]" />
               </Link>
 
@@ -181,10 +183,10 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
                 className="inline-flex items-center gap-2 px-3.5 py-2 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-muted)] text-xs font-semibold text-[var(--text)] transition-colors"
               >
                 <Download className="w-3.5 h-3.5 text-[var(--success)]" />
-                <span>Download CSV</span>
+                <span>{t.common.downloadCsv}</span>
               </a>
               <span className="text-xs text-[var(--text-muted)] hidden md:inline">
-                Download a CSV you can open in Google Sheets.
+                {t.owner.downloadCsvSheetsDesc}
               </span>
             </div>
           </div>
@@ -194,14 +196,14 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
         {activeTab === "responses" && (
           <div className="space-y-3">
             <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
-              <span>Names and choices submitted by voters</span>
+              <span>{t.owner.namesAndChoicesSubmitted}</span>
               <a
                 href={`/api/polls/${poll.id}/export?adminKey=${adminKey}`}
                 download={`poll-${poll.id}-results.csv`}
                 className="text-[var(--primary)] hover:underline font-medium inline-flex items-center gap-1"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Download CSV</span>
+                <span>{t.common.downloadCsv}</span>
               </a>
             </div>
             <ResponseTable
@@ -217,7 +219,7 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
             {/* Clean Voter Link */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] block">
-                Clean voter link
+                {t.owner.cleanVoterLink}
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -230,12 +232,12 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
                   {copiedVoter ? (
                     <>
                       <Check className="w-3.5 h-3.5 text-[var(--success)]" />
-                      <span>Copied</span>
+                      <span>{t.common.copied}</span>
                     </>
                   ) : (
                     <>
                       <Copy className="w-3.5 h-3.5" />
-                      <span>Copy link</span>
+                      <span>{t.common.copy}</span>
                     </>
                   )}
                 </Button>
@@ -245,7 +247,7 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
             {/* Public Results Link */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] block">
-                Public results link
+                {t.owner.publicResultsLink}
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -259,11 +261,11 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
                   variant="secondary"
                   onClick={async () => {
                     await navigator.clipboard.writeText(`${origin}/poll/${poll.id}/results`);
-                    showToast("Public results link copied");
+                    showToast(t.owner.toastPublicCopied);
                   }}
                 >
                   <Copy className="w-3.5 h-3.5" />
-                  <span>Copy link</span>
+                  <span>{t.common.copy}</span>
                 </Button>
               </div>
             </div>
@@ -273,7 +275,7 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-[var(--owner)] flex items-center gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Secret owner link (Admin access)</span>
+                  <span>{t.owner.secretOwnerLinkTitle}</span>
                 </span>
                 <button
                   type="button"
@@ -283,19 +285,19 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
                   {showSecretOwnerLink ? (
                     <>
                       <EyeOff className="w-3.5 h-3.5" />
-                      <span>Conceal</span>
+                      <span>{t.shareDialog.conceal}</span>
                     </>
                   ) : (
                     <>
                       <Eye className="w-3.5 h-3.5" />
-                      <span>Reveal</span>
+                      <span>{t.shareDialog.reveal}</span>
                     </>
                   )}
                 </button>
               </div>
 
               <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                Anyone with this owner link may access administrative controls, voter names, and CSV export. Keep this private.
+                {t.owner.secretOwnerLinkDesc}
               </p>
 
               <div className="flex items-center gap-2">
@@ -309,12 +311,12 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
                   {copiedOwner ? (
                     <>
                       <Check className="w-3.5 h-3.5 text-[var(--success)]" />
-                      <span>Copied</span>
+                      <span>{t.common.copied}</span>
                     </>
                   ) : (
                     <>
                       <Copy className="w-3.5 h-3.5" />
-                      <span>Copy</span>
+                      <span>{t.common.copy}</span>
                     </>
                   )}
                 </Button>
@@ -325,10 +327,10 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
             <div className="pt-2 border-t border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <span className="text-xs font-semibold text-[var(--text)] block">
-                  Export responses to CSV
+                  {t.owner.exportResponsesCsv}
                 </span>
                 <span className="text-xs text-[var(--text-muted)]">
-                  Download a CSV you can open in Google Sheets or Excel.
+                  {t.owner.exportResponsesCsvDesc}
                 </span>
               </div>
               <a
@@ -337,7 +339,7 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
                 className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-[var(--radius-control)] bg-[var(--surface)] hover:bg-[var(--surface-muted)] border border-[var(--border)] text-[var(--text)] text-xs font-bold transition-colors shrink-0"
               >
                 <Download className="w-3.5 h-3.5 text-[var(--success)]" />
-                <span>Download CSV</span>
+                <span>{t.common.downloadCsv}</span>
               </a>
             </div>
           </div>

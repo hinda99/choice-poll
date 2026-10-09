@@ -3,6 +3,7 @@
 import React from "react";
 import { Crown, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useLanguage } from "@/lib/language-context";
 
 export interface VoteResultsBarProps {
   text: string;
@@ -25,11 +26,12 @@ export const VoteResultsBar: React.FC<VoteResultsBarProps> = ({
   isEliminated = false,
   isMultipleChoice = false,
 }) => {
+  const { t } = useLanguage();
   const numPercentage = totalVotes > 0 ? (votes / totalVotes) * 100 : 0;
   const percentage = numPercentage.toFixed(1);
   const isFull = isEliminated || (isEliminationMode && votes >= maxClaims);
 
-  const denominator = isMultipleChoice ? "of voters" : "of votes";
+  const denominator = isMultipleChoice ? t.voteBar.ofVoters : t.voteBar.ofVotes;
 
   return (
     <div className="space-y-2 p-3.5 sm:p-4 rounded-[var(--radius-card)] bg-[var(--surface)] border border-[var(--border)] transition-colors shadow-xs">
@@ -51,21 +53,21 @@ export const VoteResultsBar: React.FC<VoteResultsBarProps> = ({
               className="gap-1 text-[var(--primary)] font-semibold shrink-0"
             >
               <Crown className="w-3 h-3 text-[var(--primary)]" />
-              <span>Leader</span>
+              <span>{t.voteBar.leader}</span>
             </Badge>
           )}
 
-          {/* Distinct capacity claim badge (never combined with vote share) */}
+          {/* Distinct capacity claim badge */}
           {isEliminationMode && (
             <div className="shrink-0">
               {isFull ? (
                 <Badge variant="neutral" className="gap-1 font-semibold">
                   <Lock className="w-3 h-3" />
-                  <span>Full ({votes}/{maxClaims})</span>
+                  <span>{t.voteBar.fullWithCount(votes, maxClaims)}</span>
                 </Badge>
               ) : (
                 <Badge variant="capacity" className="font-semibold">
-                  <span>{votes}/{maxClaims} claimed</span>
+                  <span>{t.voteBar.claimedWithCount(votes, maxClaims)}</span>
                 </Badge>
               )}
             </div>
@@ -75,7 +77,7 @@ export const VoteResultsBar: React.FC<VoteResultsBarProps> = ({
         {/* Numeric metric with explicit denominator */}
         <div className="flex items-baseline gap-2 shrink-0 text-right">
           <span className="text-xs text-[var(--text-muted)] font-mono tabular-nums">
-            {votes} {votes === 1 ? "vote" : "votes"}
+            {t.voteBar.voteCount(votes)}
           </span>
           <span className="text-xs sm:text-sm font-bold font-mono tabular-nums text-[var(--text)] min-w-[4rem]">
             {percentage}%{" "}
@@ -86,7 +88,7 @@ export const VoteResultsBar: React.FC<VoteResultsBarProps> = ({
         </div>
       </div>
 
-      {/* Horizontal Bar with 200-300ms easing and reduced motion support */}
+      {/* Horizontal Bar */}
       <div className="h-3 w-full bg-[var(--surface-muted)] rounded-full overflow-hidden relative">
         <div
           role="progressbar"

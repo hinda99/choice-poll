@@ -1,5 +1,8 @@
+"use client";
+
 import React from "react";
 import { VoteRecord, PollOption } from "@/lib/types";
+import { useLanguage } from "@/lib/language-context";
 
 export interface ResponseTableProps {
   records: VoteRecord[];
@@ -10,12 +13,14 @@ export const ResponseTable: React.FC<ResponseTableProps> = ({
   records,
   options,
 }) => {
+  const { t } = useLanguage();
+
   if (!records || records.length === 0) {
     return (
       <div className="text-center py-10 px-4 rounded-[var(--radius-card)] bg-[var(--surface-muted)]/50 border border-[var(--border)]">
-        <p className="text-sm font-semibold text-[var(--text)]">No votes yet</p>
+        <p className="text-sm font-semibold text-[var(--text)]">{t.owner.noVotesYet}</p>
         <p className="text-xs text-[var(--text-muted)] mt-1">
-          Share your poll link to start collecting responses.
+          {t.owner.sharePollToCollect}
         </p>
       </div>
     );
@@ -24,20 +29,20 @@ export const ResponseTable: React.FC<ResponseTableProps> = ({
   return (
     <div className="overflow-x-auto rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)]">
       <table className="w-full text-left text-xs border-collapse">
-        <caption className="sr-only">Owner Response Log</caption>
+        <caption className="sr-only">{t.owner.namesAndChoicesSubmitted}</caption>
         <thead className="bg-[var(--surface-muted)] text-[var(--text-muted)] font-semibold border-b border-[var(--border)]">
           <tr>
             <th scope="col" className="py-3 px-3.5 w-12 text-center">
-              #
+              {t.owner.tableColIndex}
             </th>
             <th scope="col" className="py-3 px-3.5">
-              Voter
+              {t.owner.tableColVoter}
             </th>
             <th scope="col" className="py-3 px-3.5">
-              Selection
+              {t.owner.tableColSelection}
             </th>
             <th scope="col" className="py-3 px-3.5 text-right">
-              Submitted
+              {t.owner.tableColSubmitted}
             </th>
           </tr>
         </thead>

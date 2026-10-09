@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Sliders } from "lucide-react";
+import { useLanguage } from "@/lib/language-context";
 
 export interface CapacitySliderProps {
   value: number; // 1 to 10
@@ -14,12 +15,13 @@ export const CapacitySlider: React.FC<CapacitySliderProps> = ({
   onChange,
   disabled = false,
 }) => {
+  const { t } = useLanguage();
   const percentage = ((value - 1) / 9) * 100;
 
   const helperText =
     value === 1
-      ? "Each choice can be claimed by one voter."
-      : `Each choice can be selected by up to ${value} voters.`;
+      ? t.capacitySlider.singleVoter
+      : t.capacitySlider.multiVoters(value);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (disabled) return;
@@ -37,7 +39,7 @@ export const CapacitySlider: React.FC<CapacitySliderProps> = ({
       <div className="flex items-center justify-between text-xs font-semibold text-[var(--text)]">
         <span className="flex items-center gap-1.5 text-[var(--capacity)] font-bold">
           <Sliders className="w-4 h-4" />
-          <span>Choice capacity</span>
+          <span>{t.capacitySlider.title}</span>
         </span>
         <span className="font-mono tabular-nums text-sm font-bold text-[var(--capacity)]">
           {value}{" "}
@@ -56,7 +58,7 @@ export const CapacitySlider: React.FC<CapacitySliderProps> = ({
           disabled={disabled}
           onChange={(e) => onChange(Number(e.target.value))}
           onKeyDown={handleKeyDown}
-          aria-label="Maximum votes allowed per choice"
+          aria-label={t.capacitySlider.ariaLabel}
           aria-valuemin={1}
           aria-valuemax={10}
           aria-valuenow={value}
@@ -101,7 +103,7 @@ export const CapacitySlider: React.FC<CapacitySliderProps> = ({
 
       {/* Meaning text */}
       <p className="text-xs text-[var(--text-muted)] leading-relaxed pt-1 border-t border-[var(--border)]">
-        {helperText} Full choices will become unavailable automatically.
+        {helperText} {t.capacitySlider.disclaimer}
       </p>
     </div>
   );

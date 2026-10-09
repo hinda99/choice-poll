@@ -21,6 +21,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { useToast } from "@/components/ui/toast";
 import { VoteResultsBar } from "@/components/poll/vote-results-bar";
 import { LiveConnectionStatus, ConnectionState } from "@/components/ui/live-connection-status";
+import { useLanguage } from "@/lib/language-context";
 
 function PollResultsContent({
   params,
@@ -28,6 +29,7 @@ function PollResultsContent({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { t } = useLanguage();
   const { showToast } = useToast();
 
   const [poll, setPoll] = useState<Poll | null>(null);
@@ -52,7 +54,7 @@ function PollResultsContent({
 
       if (diff <= 0) {
         setIsExpired(true);
-        setTimeLeft("Voting closed");
+        setTimeLeft(t.vote.votingClosed);
       } else {
         setIsExpired(false);
         const hours = Math.floor(diff / (1000 * 60 * 60));
@@ -70,7 +72,7 @@ function PollResultsContent({
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [poll?.expiresAt]);
+  }, [poll?.expiresAt, t.vote.votingClosed]);
 
   useEffect(() => {
     let isMounted = true;
@@ -80,7 +82,7 @@ function PollResultsContent({
     // 1. Initial fetch
     fetch(fetchUrl)
       .then((res) => {
-        if (!res.ok) throw new Error("Poll not found.");
+        if (!res.ok) throw new Error(t.vote.pollNotFoundTitle);
         return res.json();
       })
       .then((data) => {
@@ -145,14 +147,14 @@ function PollResultsContent({
       if (eventSource) eventSource.close();
       clearInterval(interval);
     };
-  }, [id]);
+  }, [id, t.vote.pollNotFoundTitle]);
 
   const handleCopyLink = async () => {
     if (typeof window !== "undefined") {
       const shareUrl = `${window.location.origin}/poll/${id}`;
       await navigator.clipboard.writeText(shareUrl);
       setCopiedLink(true);
-      showToast("Voter link copied to clipboard");
+      showToast(t.results.toastCopied);
       setTimeout(() => setCopiedLink(false), 2000);
     }
   };
@@ -178,14 +180,14 @@ function PollResultsContent({
   if (!poll) {
     return (
       <EmptyState
-        title="Poll not found"
-        description={errorMsg || "Unable to retrieve poll details."}
+        title={t.vote.pollNotFoundTitle}
+        description={errorMsg || t.results.unableToRetrieve}
         action={
           <Link
             href="/"
             className="inline-flex items-center justify-center h-11 px-5 rounded-[var(--radius-control)] bg-[var(--primary)] text-white text-sm font-semibold hover:bg-[var(--primary-hover)] transition-colors"
           >
-            Create a new poll
+            {t.vote.createPollBtn}
           </Link>
         }
         className="max-w-[660px] mx-auto py-16"
@@ -193,8 +195,8 @@ function PollResultsContent({
     );
   }
 
-  // Calculations: Differentiate total voters (accepted submissions) and total selections cast
-  const totalVoters = poll.totalVotes; // Submissions accepted by server
+  // Calculations: Differentiate total voters and total selections cast
+  const totalVoters = poll.totalVotes;
   const totalSelections = poll.options.reduce((sum, opt) => sum + opt.votes, 0);
 
   const highestVoteCount = Math.max(...poll.options.map((o) => o.votes), 0);
@@ -208,17 +210,17 @@ function PollResultsContent({
     highestVoteCount === 0
       ? "—"
       : isLeadingTie
-      ? "Tie"
+      ? t.results.tie
       : leadingOptions[0]?.text || "—";
 
   const isMaxVotesReached = Boolean(
     poll.maxTotalVotes && poll.totalVotes >= poll.maxTotalVotes
   );
   const pollStatusLabel = isExpired
-    ? "Voting closed"
+    ? t.vote.votingClosed
     : isMaxVotesReached
-    ? "Vote cap reached"
-    : "Open";
+    ? t.vote.voteCapReached
+    : t.results.open;
 
   // Sorting options: default original choice order, optional sort by votes
   const displayedOptions = [...poll.options];
@@ -226,7 +228,6 @@ function PollResultsContent({
     displayedOptions.sort((a, b) => b.votes - a.votes);
   }
 
-  // Denominator for choice vote share
   const calculationBase = totalVoters;
 
   return (
@@ -237,7 +238,13 @@ function PollResultsContent({
           <div className="flex items-center gap-2.5">
             <LiveConnectionStatus status={connectionState} />
             <span className="text-xs text-[var(--text-muted)] font-mono tabular-nums">
-              Synced {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+              {t.results.syncedAt(
+                lastUpdated.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                })
+              )}
             </span>
           </div>
 
@@ -253,7 +260,7 @@ function PollResultsContent({
             className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-muted)] text-xs font-semibold text-[var(--text)] transition-colors shadow-xs"
           >
             <Vote className="w-3.5 h-3.5 text-[var(--primary)]" />
-            <span>Go to voting</span>
+            <span>{t.results.goToVoting}</span>
           </Link>
 
           <button
@@ -264,24 +271,24 @@ function PollResultsContent({
             {copiedLink ? (
               <>
                 <Check className="w-3.5 h-3.5 text-[var(--success)]" />
-                <span className="text-[var(--success)]">Link copied</span>
+                <span className="text-[var(--success)]">{t.results.linkCopied}</span>
               </>
             ) : (
               <>
                 <Share2 className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                <span>Share voter link</span>
+                <span>{t.results.shareVoterLink}</span>
               </>
             )}
           </button>
         </div>
       </div>
 
-      {/* 2. Three KPI cards per Section 9 */}
+      {/* 2. Three KPI cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* KPI 1: Total votes / Total voters (accurate metric semantics) */}
+        {/* KPI 1: Total votes / Total voters */}
         <Card className="p-5 space-y-1 bg-[var(--surface)]">
           <span className="text-xs font-medium text-[var(--text-muted)] block">
-            {poll.isMultipleChoice ? "Total voters" : "Total votes cast"}
+            {poll.isMultipleChoice ? t.results.totalVoters : t.results.totalVotesCast}
           </span>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-bold font-mono tabular-nums text-[var(--text)]">
@@ -289,13 +296,13 @@ function PollResultsContent({
             </span>
             {poll.maxTotalVotes && (
               <span className="text-xs text-[var(--text-subtle)] font-mono tabular-nums">
-                / {poll.maxTotalVotes} submissions max
+                {t.results.submissionsMax(poll.maxTotalVotes)}
               </span>
             )}
           </div>
           {poll.isMultipleChoice && (
             <p className="text-[11px] text-[var(--text-subtle)] font-mono tabular-nums pt-0.5">
-              {totalSelections} individual selections
+              {t.results.individualSelections(totalSelections)}
             </p>
           )}
         </Card>
@@ -303,7 +310,7 @@ function PollResultsContent({
         {/* KPI 2: Leading choice */}
         <Card className="p-5 space-y-1 bg-[var(--surface)]">
           <span className="text-xs font-medium text-[var(--text-muted)] block">
-            Leading choice
+            {t.results.leadingChoice}
           </span>
           <div className="flex items-center gap-2 min-w-0">
             {highestVoteCount > 0 && !isLeadingTie && (
@@ -315,7 +322,7 @@ function PollResultsContent({
           </div>
           {isLeadingTie && highestVoteCount > 0 && (
             <p className="text-[11px] text-[var(--text-subtle)]">
-              {leadingOptions.length} choices tied at {highestVoteCount} votes
+              {t.results.tiedChoicesNotice(leadingOptions.length, highestVoteCount)}
             </p>
           )}
         </Card>
@@ -323,7 +330,7 @@ function PollResultsContent({
         {/* KPI 3: Poll status */}
         <Card className="p-5 space-y-1 bg-[var(--surface)]">
           <span className="text-xs font-medium text-[var(--text-muted)] block">
-            Poll status
+            {t.results.pollStatus}
           </span>
           <div className="flex items-center gap-2">
             {isExpired || isMaxVotesReached ? (
@@ -350,16 +357,16 @@ function PollResultsContent({
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <h2 className="text-base font-bold text-[var(--text)] tracking-tight">
-              Vote distribution
+              {t.results.voteDistribution}
             </h2>
             <p className="text-xs text-[var(--text-muted)]">
               {poll.isMultipleChoice
-                ? "Percentages reflect share of voters who chose each option"
-                : "Percentages reflect share of total votes"}
+                ? t.results.distributionMultiDesc
+                : t.results.distributionSingleDesc}
             </p>
           </div>
 
-          {/* Optional sort control per Section 9 */}
+          {/* Optional sort control */}
           <button
             type="button"
             onClick={() => setSortByVotes(!sortByVotes)}
@@ -368,27 +375,27 @@ function PollResultsContent({
             {sortByVotes ? (
               <>
                 <ListOrdered className="w-3.5 h-3.5" />
-                <span>Sort: Most votes</span>
+                <span>{t.results.sortVotes}</span>
               </>
             ) : (
               <>
                 <ArrowUpDown className="w-3.5 h-3.5" />
-                <span>Sort: Original order</span>
+                <span>{t.results.sortOriginal}</span>
               </>
             )}
           </button>
         </div>
 
-        {/* Empty state notice if zero votes, but STILL show choices and empty tracks per Section 9 & 11 */}
+        {/* Empty state notice if zero votes */}
         {totalVoters === 0 && (
           <div className="p-4 rounded-[var(--radius-control)] bg-[var(--surface-muted)]/60 border border-[var(--border)] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[var(--text-muted)]">
-            <span>No votes recorded yet. Share your poll link to collect responses.</span>
+            <span>{t.results.noVotesYet}</span>
             <Link
               href={`/poll/${id}`}
               className="inline-flex items-center gap-1 font-semibold text-[var(--primary)] hover:underline shrink-0"
             >
               <Vote className="w-3.5 h-3.5" />
-              <span>Cast first vote</span>
+              <span>{t.results.castFirstVote}</span>
             </Link>
           </div>
         )}
@@ -421,10 +428,10 @@ function PollResultsContent({
       {/* 4. Voter Privacy Disclosure */}
       <div className="p-4 rounded-[var(--radius-card)] bg-[var(--surface-muted)]/50 border border-[var(--border)] text-center text-xs text-[var(--text-muted)] space-y-1">
         <p className="font-semibold text-[var(--text)]">
-          🔒 Private public results
+          {t.results.privateResultsTitle}
         </p>
         <p>
-          People vote without registering. Individual voter names and responses are private and accessible only to the poll creator in the owner dashboard.
+          {t.results.privateResultsDesc}
         </p>
       </div>
 
@@ -435,7 +442,7 @@ function PollResultsContent({
           className="hover:text-[var(--primary)] transition-colors inline-flex items-center gap-1 font-medium"
         >
           <Vote className="w-3.5 h-3.5" />
-          <span>Back to poll</span>
+          <span>{t.results.backToPoll}</span>
         </Link>
 
         <div className="flex items-center gap-4">
@@ -444,7 +451,7 @@ function PollResultsContent({
             className="hover:text-[var(--owner)] transition-colors inline-flex items-center gap-1 font-medium text-[var(--text-subtle)]"
           >
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Poll creator? Owner dashboard</span>
+            <span>{t.results.ownerDashboardLink}</span>
           </Link>
 
           <Link
@@ -452,7 +459,7 @@ function PollResultsContent({
             className="hover:text-[var(--primary)] transition-colors inline-flex items-center gap-1 font-medium"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Create a new poll</span>
+            <span>{t.results.createNewPoll}</span>
           </Link>
         </div>
       </div>

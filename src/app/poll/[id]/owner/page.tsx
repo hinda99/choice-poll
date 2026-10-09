@@ -17,9 +17,11 @@ import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/text-input";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLanguage } from "@/lib/language-context";
 
 function PollOwnerContent({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { t } = useLanguage();
   const [adminKey, setAdminKey] = useState<string>("");
   const [inputKey, setInputKey] = useState<string>("");
   const [poll, setPoll] = useState<Poll | null>(null);
@@ -39,7 +41,7 @@ function PollOwnerContent({ params }: { params: Promise<{ id: string }> }) {
       const res = await fetch(`/api/polls/${id}?adminKey=${encodeURIComponent(keyToTest)}`);
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Failed to load owner data.");
+        throw new Error(data.error || t.owner.invalidKey);
       }
       if (data.isOwner) {
         setPoll(data.poll);
@@ -49,10 +51,10 @@ function PollOwnerContent({ params }: { params: Promise<{ id: string }> }) {
           localStorage.setItem(`poll_admin_${id}`, keyToTest);
         }
       } else {
-        throw new Error("Invalid owner key. Access denied.");
+        throw new Error(t.owner.invalidKey);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Access denied.";
+      const msg = err instanceof Error ? err.message : t.owner.invalidKey;
       setErrorMsg(msg);
       setIsOwner(false);
     } finally {
@@ -77,7 +79,7 @@ function PollOwnerContent({ params }: { params: Promise<{ id: string }> }) {
 
     fetch(`/api/polls/${id}?adminKey=${encodeURIComponent(initialKey)}`)
       .then((res) => {
-        if (!res.ok) throw new Error("Invalid owner key. Access denied.");
+        if (!res.ok) throw new Error(t.owner.invalidKey);
         return res.json();
       })
       .then((data) => {
@@ -88,13 +90,13 @@ function PollOwnerContent({ params }: { params: Promise<{ id: string }> }) {
           setAdminKey(initialKey);
           localStorage.setItem(`poll_admin_${id}`, initialKey);
         } else {
-          setErrorMsg("Invalid owner key. Access denied.");
+          setErrorMsg(t.owner.invalidKey);
           setIsOwner(false);
         }
       })
       .catch((err: unknown) => {
         if (!isMounted) return;
-        const msg = err instanceof Error ? err.message : "Access denied.";
+        const msg = err instanceof Error ? err.message : t.owner.invalidKey;
         setErrorMsg(msg);
         setIsOwner(false);
       })
@@ -107,7 +109,7 @@ function PollOwnerContent({ params }: { params: Promise<{ id: string }> }) {
     return () => {
       isMounted = false;
     };
-  }, [id]);
+  }, [id, t.owner.invalidKey]);
 
   const handleManualLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,10 +143,10 @@ function PollOwnerContent({ params }: { params: Promise<{ id: string }> }) {
 
           <div className="space-y-1.5">
             <h1 className="text-xl font-bold tracking-tight text-[var(--text)]">
-              Owner Dashboard
+              {t.owner.title}
             </h1>
             <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-              This area is restricted to the creator of this poll. Enter your secret Admin Key to view voter response logs and download CSV results.
+              {t.owner.restrictedDesc}
             </p>
           </div>
 
@@ -157,12 +159,12 @@ function PollOwnerContent({ params }: { params: Promise<{ id: string }> }) {
           <form onSubmit={handleManualLogin} className="space-y-4 text-left">
             <TextInput
               id="admin-key"
-              label="Secret Admin Key"
+              label={t.owner.adminKeyLabel}
               type="password"
               required
               value={inputKey}
               onChange={(e) => setInputKey(e.target.value)}
-              placeholder="Paste your admin key"
+              placeholder={t.owner.adminKeyPlaceholder}
               autoComplete="off"
             />
 
@@ -175,7 +177,7 @@ function PollOwnerContent({ params }: { params: Promise<{ id: string }> }) {
               className="w-full font-semibold text-sm"
             >
               <KeyRound className="w-4 h-4 mr-1.5" />
-              <span>Access Owner Dashboard</span>
+              <span>{t.owner.accessDashboardBtn}</span>
             </Button>
           </form>
 
@@ -185,14 +187,14 @@ function PollOwnerContent({ params }: { params: Promise<{ id: string }> }) {
               className="hover:text-[var(--primary)] transition-colors inline-flex items-center justify-center gap-1 font-medium"
             >
               <BarChart2 className="w-3.5 h-3.5" />
-              <span>View public voting results instead</span>
+              <span>{t.owner.viewPublicResultsInstead}</span>
             </Link>
             <Link
               href={`/poll/${id}`}
               className="hover:text-[var(--primary)] transition-colors inline-flex items-center justify-center gap-1 font-medium"
             >
               <Vote className="w-3.5 h-3.5" />
-              <span>Go to voting page</span>
+              <span>{t.owner.goToVotingPage}</span>
             </Link>
           </div>
         </Card>
@@ -209,10 +211,10 @@ function PollOwnerContent({ params }: { params: Promise<{ id: string }> }) {
           <div className="flex items-center gap-2">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--owner)]/10 text-[var(--owner)] text-xs font-bold">
               <ShieldCheck className="w-4 h-4" />
-              <span>Owner Dashboard</span>
+              <span>{t.owner.ownerHeaderBadge}</span>
             </div>
             <span className="text-xs text-[var(--text-muted)] hidden sm:inline">
-              — Private management for poll creator
+              {t.owner.ownerSubtitle}
             </span>
           </div>
 
@@ -228,7 +230,7 @@ function PollOwnerContent({ params }: { params: Promise<{ id: string }> }) {
             className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-muted)] text-xs font-semibold text-[var(--text)] transition-colors shadow-xs"
           >
             <BarChart2 className="w-3.5 h-3.5 text-[var(--primary)]" />
-            <span>View public results</span>
+            <span>{t.owner.viewPublicResults}</span>
             <ExternalLink className="w-3 h-3 text-[var(--text-muted)]" />
           </Link>
 
@@ -237,7 +239,7 @@ function PollOwnerContent({ params }: { params: Promise<{ id: string }> }) {
             className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-muted)] text-xs font-semibold text-[var(--text)] transition-colors shadow-xs"
           >
             <Vote className="w-3.5 h-3.5 text-[var(--primary)]" />
-            <span>Open voting page</span>
+            <span>{t.owner.openVotingPage}</span>
             <ExternalLink className="w-3 h-3 text-[var(--text-muted)]" />
           </Link>
         </div>

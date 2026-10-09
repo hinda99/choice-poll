@@ -14,13 +14,16 @@ function applyTheme(t: Theme) {
   } else if (t === "light") {
     root.classList.remove("dark");
     root.setAttribute("data-theme", "light");
-  } else {
+  } else if (t === "system") {
     root.removeAttribute("data-theme");
     if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
       root.classList.add("dark");
     } else {
       root.classList.remove("dark");
     }
+  } else {
+    root.classList.remove("dark");
+    root.setAttribute("data-theme", "light");
   }
 }
 
@@ -36,15 +39,15 @@ function subscribe(callback: () => void) {
 }
 
 function getSnapshot(): Theme {
-  if (typeof window === "undefined") return "system";
+  if (typeof window === "undefined") return "light";
   const stored = localStorage.getItem("choice-theme") as Theme | null;
   return stored && ["light", "dark", "system"].includes(stored)
     ? stored
-    : "system";
+    : "light";
 }
 
 function getServerSnapshot(): Theme {
-  return "system";
+  return "light";
 }
 
 export const ThemeToggle: React.FC = () => {

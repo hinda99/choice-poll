@@ -6,6 +6,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Copy, Check, ExternalLink, ShieldAlert, Eye, EyeOff, BarChart2 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { useLanguage } from "@/lib/language-context";
 
 export interface ShareDialogProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
   pollId,
   creatorKey,
 }) => {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const [copiedVoter, setCopiedVoter] = useState(false);
   const [copiedOwner, setCopiedOwner] = useState(false);
@@ -36,7 +38,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
     if (!voterUrl) return;
     await navigator.clipboard.writeText(voterUrl);
     setCopiedVoter(true);
-    showToast("Voter link copied to clipboard");
+    showToast(t.shareDialog.toastVoterCopied);
     setTimeout(() => setCopiedVoter(false), 2000);
   };
 
@@ -44,7 +46,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
     if (!ownerUrl) return;
     await navigator.clipboard.writeText(ownerUrl);
     setCopiedOwner(true);
-    showToast("Secret owner link copied to clipboard", "warning");
+    showToast(t.shareDialog.toastOwnerCopied, "warning");
     setTimeout(() => setCopiedOwner(false), 2000);
   };
 
@@ -52,14 +54,14 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title="Poll created successfully"
-      description="Your poll is ready for voting. Share the voter link with participants."
+      title={t.shareDialog.title}
+      description={t.shareDialog.description}
     >
       <div className="space-y-6">
         {/* Public Voter Link Section */}
         <div className="space-y-2">
           <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-            Share with voters (Public)
+            {t.shareDialog.shareWithVoters}
           </label>
           <div className="flex items-center gap-2">
             <input
@@ -76,12 +78,12 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
               {copiedVoter ? (
                 <>
                   <Check className="w-4 h-4 text-white" />
-                  <span>Copied</span>
+                  <span>{t.shareDialog.copied}</span>
                 </>
               ) : (
                 <>
                   <Copy className="w-4 h-4" />
-                  <span>Copy link</span>
+                  <span>{t.shareDialog.copyLink}</span>
                 </>
               )}
             </Button>
@@ -94,7 +96,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
             href={`/poll/${pollId}`}
             className="flex-1 inline-flex items-center justify-center gap-2 h-11 px-4 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-muted)] text-[var(--text)] text-sm font-semibold transition-colors"
           >
-            <span>Open voting page</span>
+            <span>{t.shareDialog.openVotingPage}</span>
             <ExternalLink className="w-3.5 h-3.5 text-[var(--text-muted)]" />
           </Link>
           <Link
@@ -102,7 +104,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
             className="flex-1 inline-flex items-center justify-center gap-2 h-11 px-4 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-muted)] text-[var(--text)] text-sm font-semibold transition-colors"
           >
             <BarChart2 className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-            <span>View results</span>
+            <span>{t.shareDialog.viewResults}</span>
           </Link>
         </div>
 
@@ -112,7 +114,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--warning)]">
                 <ShieldAlert className="w-4 h-4" />
-                <span>Owner link · Keep private</span>
+                <span>{t.shareDialog.ownerLinkTitle}</span>
               </span>
               <button
                 type="button"
@@ -122,19 +124,19 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                 {showOwnerSecret ? (
                   <>
                     <EyeOff className="w-3.5 h-3.5" />
-                    <span>Conceal</span>
+                    <span>{t.shareDialog.conceal}</span>
                   </>
                 ) : (
                   <>
                     <Eye className="w-3.5 h-3.5" />
-                    <span>Reveal</span>
+                    <span>{t.shareDialog.reveal}</span>
                   </>
                 )}
               </button>
             </div>
 
             <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-              Anyone with this owner link may access administrative controls, voter names, and CSV export. Bookmark or save this link.
+              {t.shareDialog.ownerLinkDesc}
             </p>
 
             <div className="flex items-center gap-2">
@@ -153,12 +155,12 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                 {copiedOwner ? (
                   <>
                     <Check className="w-3.5 h-3.5 text-[var(--success)]" />
-                    <span>Copied</span>
+                    <span>{t.shareDialog.copied}</span>
                   </>
                 ) : (
                   <>
                     <Copy className="w-3.5 h-3.5" />
-                    <span>Copy owner link</span>
+                    <span>{t.shareDialog.copyOwnerLink}</span>
                   </>
                 )}
               </Button>

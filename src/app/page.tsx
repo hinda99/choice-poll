@@ -10,8 +10,10 @@ import { InlineAlert } from "@/components/ui/inline-alert";
 import { PageHeading } from "@/components/ui/page-heading";
 import { CapacitySlider } from "@/components/poll/capacity-slider";
 import { ShareDialog } from "@/components/poll/share-dialog";
+import { useLanguage } from "@/lib/language-context";
 
 export default function CreatePollPage() {
+  const { t } = useLanguage();
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState<string[]>(["", ""]);
   const [isMultipleChoice, setIsMultipleChoice] = useState(false);
@@ -68,9 +70,9 @@ export default function CreatePollPage() {
 
     const cleanQuestion = question.trim();
     if (!cleanQuestion) {
-      errors.question = "Please enter a question for your poll.";
+      errors.question = t.create.questionErrorEmpty;
     } else if (cleanQuestion.length > 300) {
-      errors.question = "Question cannot exceed 300 characters.";
+      errors.question = t.create.questionErrorMax;
     }
 
     const cleanOptions = options
@@ -78,9 +80,9 @@ export default function CreatePollPage() {
       .filter((opt) => opt.length > 0);
 
     if (cleanOptions.length < 2) {
-      errors.options = "Please provide at least 2 non-empty choices.";
+      errors.options = t.create.choicesErrorMin;
     } else if (cleanOptions.length > 25) {
-      errors.options = "You can add at most 25 choices.";
+      errors.options = t.create.choicesErrorMax;
     }
 
     if (Object.keys(errors).length > 0) {
@@ -114,7 +116,7 @@ export default function CreatePollPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to create poll.");
+        throw new Error(data.error || t.create.failedToCreate);
       }
 
       // Store creator flag and admin key in localStorage
@@ -129,7 +131,7 @@ export default function CreatePollPage() {
       setCreatedAdminKey(data.creatorKey || null);
       setIsShareDialogOpen(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Something went wrong.";
+      const msg = err instanceof Error ? err.message : t.common.somethingWentWrong;
       setErrorMessage(msg);
     } finally {
       setIsSubmitting(false);
@@ -141,10 +143,10 @@ export default function CreatePollPage() {
 
   return (
     <div className="space-y-8">
-      {/* Page Heading per Section 6.1 & 7 */}
+      {/* Page Heading */}
       <PageHeading
-        title="Create a poll"
-        subtitle="Ask a question, set the rules, and share instantly."
+        title={t.create.title}
+        subtitle={t.create.subtitle}
       />
 
       <form onSubmit={handleSubmit} noValidate>
@@ -156,7 +158,7 @@ export default function CreatePollPage() {
               {/* Question Field using reusable Textarea */}
               <Textarea
                 ref={questionInputRef}
-                label="Your question"
+                label={t.create.questionLabel}
                 value={question}
                 onChange={(e) => {
                   setQuestion(e.target.value);
@@ -166,7 +168,7 @@ export default function CreatePollPage() {
                 }}
                 maxLength={300}
                 showCounter={true}
-                placeholder="What should we decide?"
+                placeholder={t.create.questionPlaceholder}
                 error={fieldErrors.question}
               />
 
@@ -174,10 +176,10 @@ export default function CreatePollPage() {
               <div className="space-y-3 pt-3 border-t border-[var(--border)]">
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-semibold text-[var(--text)]">
-                    Answer choices
+                    {t.create.choicesLabel}
                   </label>
                   <span className="text-xs text-[var(--text-subtle)] font-mono tabular-nums">
-                    {options.length} / 25 choices
+                    {t.create.choicesCount(options.length)}
                   </span>
                 </div>
 
@@ -200,8 +202,8 @@ export default function CreatePollPage() {
                           value={option}
                           maxLength={150}
                           onChange={(e) => handleOptionChange(idx, e.target.value)}
-                          placeholder={`Choice ${idx + 1}`}
-                          aria-label={`Choice ${idx + 1}`}
+                          placeholder={t.create.choicePlaceholder(idx + 1)}
+                          aria-label={t.create.choiceAria(idx + 1)}
                           className="flex-1 h-11 px-3.5 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-sm placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent transition-colors"
                         />
 
@@ -212,13 +214,13 @@ export default function CreatePollPage() {
                           onClick={() => handleRemoveOption(idx)}
                           aria-label={
                             isMinChoices
-                              ? "At least 2 choices required"
-                              : `Remove choice ${idx + 1}`
+                              ? t.create.minChoicesTooltip
+                              : t.create.removeChoiceAria(idx + 1)
                           }
                           title={
                             isMinChoices
-                              ? "At least 2 choices required"
-                              : `Remove choice ${idx + 1}`
+                              ? t.create.minChoicesTooltip
+                              : t.create.removeChoiceAria(idx + 1)
                           }
                           className={`p-2.5 rounded-lg transition-colors focus-ring ${
                             isMinChoices
@@ -243,7 +245,7 @@ export default function CreatePollPage() {
                 {/* Clear boundary feedback for minimum choices */}
                 {isMinChoices && (
                   <p className="text-[11px] text-[var(--text-subtle)]">
-                    Polls require a minimum of 2 choices.
+                    {t.create.minChoicesNotice}
                   </p>
                 )}
 
@@ -255,11 +257,11 @@ export default function CreatePollPage() {
                     className="w-full mt-2 h-11 rounded-[var(--radius-control)] border border-dashed border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]/50 text-[var(--text-muted)] hover:text-[var(--primary)] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer focus-ring"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>+ Add choice</span>
+                    <span>{t.create.addChoice}</span>
                   </button>
                 ) : (
                   <div className="p-3 rounded-[var(--radius-control)] bg-[var(--surface-muted)] border border-[var(--border)] text-center text-xs text-[var(--text-muted)] font-medium">
-                    Maximum limit of 25 choices reached.
+                    {t.create.maxChoicesReached}
                   </div>
                 )}
               </div>
@@ -281,7 +283,7 @@ export default function CreatePollPage() {
                 isLoading={isSubmitting}
                 className="w-full sm:w-auto px-8 font-semibold text-base shadow-xs"
               >
-                <span>Create poll & share</span>
+                <span>{t.create.createAndShare}</span>
                 <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
@@ -293,7 +295,7 @@ export default function CreatePollPage() {
               <div className="flex items-center gap-2 pb-2 border-b border-[var(--border)]">
                 <Layers className="w-4 h-4 text-[var(--primary)]" />
                 <h2 className="text-sm font-bold text-[var(--text)] tracking-tight">
-                  Poll rules
+                  {t.create.rulesHeading}
                 </h2>
               </div>
 
@@ -301,8 +303,8 @@ export default function CreatePollPage() {
               <Switch
                 checked={isMultipleChoice}
                 onChange={setIsMultipleChoice}
-                label="Allow multiple selections"
-                description="Voters can select more than one answer option."
+                label={t.create.ruleMultipleChoiceTitle}
+                description={t.create.ruleMultipleChoiceDesc}
               />
 
               {/* Rule 2: Limit votes per choice (Elimination mode) */}
@@ -310,8 +312,8 @@ export default function CreatePollPage() {
                 <Switch
                   checked={isEliminationMode}
                   onChange={setIsEliminationMode}
-                  label="Limit votes per choice"
-                  description="Choices become disabled when their spot limit is reached."
+                  label={t.create.ruleEliminationTitle}
+                  description={t.create.ruleEliminationDesc}
                 />
 
                 {isEliminationMode && (
@@ -327,16 +329,16 @@ export default function CreatePollPage() {
                 <Switch
                   checked={hasMaxVotes}
                   onChange={setHasMaxVotes}
-                  label="Set total vote limit"
-                  description="Poll closes automatically after accepted submissions."
+                  label={t.create.ruleTotalLimitTitle}
+                  description={t.create.ruleTotalLimitDesc}
                 />
 
                 {hasMaxVotes && (
                   <div className="p-3.5 rounded-[var(--radius-control)] bg-[var(--surface-muted)] border border-[var(--border)] space-y-3">
                     <div className="flex items-center justify-between text-xs font-semibold text-[var(--text)]">
-                      <span>Poll closes after:</span>
+                      <span>{t.create.closesAfter}</span>
                       <span className="font-mono tabular-nums text-sm font-bold text-[var(--primary)]">
-                        {maxTotalVotes} submissions
+                        {t.create.submissionsCount(maxTotalVotes)}
                       </span>
                     </div>
 
@@ -359,7 +361,7 @@ export default function CreatePollPage() {
                     </div>
 
                     <p className="text-[11px] text-[var(--text-muted)] pt-1 border-t border-[var(--border)]">
-                      Poll closes after {maxTotalVotes} accepted voter submissions.
+                      {t.create.closesAfterNotice(maxTotalVotes)}
                     </p>
                   </div>
                 )}
@@ -370,14 +372,14 @@ export default function CreatePollPage() {
                 <Switch
                   checked={hasTimeLimit}
                   onChange={setHasTimeLimit}
-                  label="Set voting time limit"
-                  description="Voting closes automatically when the timer expires."
+                  label={t.create.ruleTimeLimitTitle}
+                  description={t.create.ruleTimeLimitDesc}
                 />
 
                 {hasTimeLimit && (
                   <div className="p-3.5 rounded-[var(--radius-control)] bg-[var(--surface-muted)] border border-[var(--border)] space-y-3">
                     <div className="flex items-center justify-between text-xs font-semibold text-[var(--text)]">
-                      <span>Voting duration:</span>
+                      <span>{t.create.votingDuration}</span>
                       <span className="font-mono tabular-nums text-sm font-bold text-[var(--primary)]">
                         {timeLimitHours}h
                       </span>
@@ -402,7 +404,7 @@ export default function CreatePollPage() {
                     </div>
 
                     <p className="text-[11px] text-[var(--text-muted)] pt-1 border-t border-[var(--border)]">
-                      Voting closes automatically {timeLimitHours} hours after creation.
+                      {t.create.closesAfterHoursNotice(timeLimitHours)}
                     </p>
                   </div>
                 )}

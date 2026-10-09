@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { PollOptionCard } from "@/components/poll/poll-option-card";
 import { LiveConnectionStatus, ConnectionState } from "@/components/ui/live-connection-status";
+import { useLanguage } from "@/lib/language-context";
 
 function PollVoteContent({
   params,
@@ -31,6 +32,7 @@ function PollVoteContent({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { t } = useLanguage();
   const { showToast } = useToast();
 
   const [poll, setPoll] = useState<Poll | null>(null);
@@ -75,7 +77,7 @@ function PollVoteContent({
 
       if (diff <= 0) {
         setIsExpired(true);
-        setTimeLeft("Voting closed");
+        setTimeLeft(t.vote.votingClosed);
       } else {
         setIsExpired(false);
         const hours = Math.floor(diff / (1000 * 60 * 60));
@@ -93,7 +95,7 @@ function PollVoteContent({
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [poll?.expiresAt]);
+  }, [poll?.expiresAt, t.vote.votingClosed]);
 
   // Data fetching + SSE sync
   useEffect(() => {
@@ -104,7 +106,7 @@ function PollVoteContent({
     // Initial fetch
     fetch(fetchUrl)
       .then((res) => {
-        if (!res.ok) throw new Error("Poll not found.");
+        if (!res.ok) throw new Error(t.vote.pollNotFoundTitle);
         return res.json();
       })
       .then((data) => {
@@ -168,7 +170,7 @@ function PollVoteContent({
       if (eventSource) eventSource.close();
       clearInterval(interval);
     };
-  }, [id]);
+  }, [id, t.vote.pollNotFoundTitle]);
 
   const handleToggleOption = (optionId: string) => {
     if (!poll) return;
@@ -191,12 +193,12 @@ function PollVoteContent({
 
     const cleanName = voterName.trim();
     if (!cleanName || cleanName.length < 2) {
-      setErrorMsg("Please enter your name or nickname (at least 2 characters).");
+      setErrorMsg(t.vote.voterNameError);
       return;
     }
 
     if (selectedOptionIds.length === 0) {
-      setErrorMsg("Please select at least one choice.");
+      setErrorMsg(t.vote.selectChoiceError);
       return;
     }
 
@@ -224,7 +226,7 @@ function PollVoteContent({
             setSelectedOptionIds(stillOpen);
           }
         } else {
-          throw new Error(data.error || "Failed to record vote.");
+          throw new Error(data.error || t.vote.failedToRecord);
         }
         setSubmitting(false);
         return;
@@ -238,9 +240,9 @@ function PollVoteContent({
         localStorage.setItem(`voted_${id}`, JSON.stringify(record));
       }
       setVotedRecord(record);
-      showToast("Your vote was recorded!");
+      showToast(t.vote.toastVoteSuccess);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Vote failed.";
+      const msg = err instanceof Error ? err.message : t.vote.voteFailed;
       setErrorMsg(msg);
     } finally {
       setSubmitting(false);
@@ -252,7 +254,7 @@ function PollVoteContent({
       const voterUrl = `${window.location.origin}/poll/${id}`;
       await navigator.clipboard.writeText(voterUrl);
       setCopiedLink(true);
-      showToast("Voter link copied to clipboard");
+      showToast(t.vote.toastVoterCopied);
       setTimeout(() => setCopiedLink(false), 2000);
     }
   };
@@ -280,14 +282,14 @@ function PollVoteContent({
   if (!poll) {
     return (
       <EmptyState
-        title="Poll not found"
-        description="This poll may have expired or the link is incorrect."
+        title={t.vote.pollNotFoundTitle}
+        description={t.vote.pollNotFoundDesc}
         action={
           <Link
             href="/"
             className="inline-flex items-center justify-center h-11 px-5 rounded-[var(--radius-control)] bg-[var(--primary)] text-white text-sm font-semibold hover:bg-[var(--primary-hover)] transition-colors"
           >
-            Create a new poll
+            {t.vote.createPollBtn}
           </Link>
         }
         className="max-w-[660px] mx-auto py-16"
@@ -313,18 +315,18 @@ function PollVoteContent({
           {isLocked ? (
             <Badge variant="warning" className="gap-1">
               <Lock className="w-3 h-3" />
-              <span>{isExpired ? "Voting closed" : "Vote cap reached"}</span>
+              <span>{isExpired ? t.vote.votingClosed : t.vote.voteCapReached}</span>
             </Badge>
           ) : (
             <Badge variant="success">
-              <span>Voting open</span>
+              <span>{t.vote.votingOpen}</span>
             </Badge>
           )}
 
           {/* Mode */}
           <Badge variant="neutral" className="gap-1">
             <Layers className="w-3 h-3" />
-            <span>{poll.isMultipleChoice ? "Multiple choice" : "Single choice"}</span>
+            <span>{poll.isMultipleChoice ? t.vote.multipleChoice : t.vote.singleChoice}</span>
           </Badge>
 
           {/* Quota */}
@@ -332,7 +334,7 @@ function PollVoteContent({
             <Badge variant="neutral" className="gap-1 font-mono">
               <Users className="w-3 h-3" />
               <span className="tabular-nums">
-                {poll.totalVotes}/{poll.maxTotalVotes} submissions
+                {t.vote.submissionsQuota(poll.totalVotes, poll.maxTotalVotes)}
               </span>
             </Badge>
           )}
@@ -358,12 +360,12 @@ function PollVoteContent({
           {copiedLink ? (
             <>
               <Check className="w-3.5 h-3.5 text-[var(--success)]" />
-              <span className="text-[var(--success)]">Link copied</span>
+              <span className="text-[var(--success)]">{t.vote.linkCopied}</span>
             </>
           ) : (
             <>
               <Share2 className="w-3.5 h-3.5" />
-              <span>Share</span>
+              <span>{t.vote.shareBtn}</span>
             </>
           )}
         </button>
@@ -378,17 +380,17 @@ function PollVoteContent({
 
       {/* Closed Banners */}
       {isExpired && !votedRecord && (
-        <InlineAlert variant="warning" title="Voting has closed">
-          The time limit for this poll has expired. You can view the final results below.
+        <InlineAlert variant="warning" title={t.vote.votingClosedAlertTitle}>
+          {t.vote.votingClosedAlertDesc}
         </InlineAlert>
       )}
 
       {isMaxVotesReached && !isExpired && !votedRecord && (
         <InlineAlert
           variant="warning"
-          title={`Vote quota reached (${poll.totalVotes}/${poll.maxTotalVotes})`}
+          title={t.vote.voteQuotaReachedTitle(poll.totalVotes, poll.maxTotalVotes || 0)}
         >
-          This poll reached its maximum vote capacity. New votes cannot be accepted.
+          {t.vote.voteQuotaReachedDesc}
         </InlineAlert>
       )}
 
@@ -401,10 +403,10 @@ function PollVoteContent({
 
           <div className="space-y-1.5">
             <h2 className="text-xl sm:text-2xl font-bold text-[var(--text)]">
-              Your vote was recorded
+              {t.vote.voteRecordedTitle}
             </h2>
             <p className="text-sm text-[var(--text-muted)] max-w-md mx-auto">
-              Thank you, <strong className="text-[var(--text)]">{votedRecord.voterName}</strong>. Your response has been securely saved.
+              {t.vote.voteRecordedDesc(votedRecord.voterName)}
             </p>
           </div>
 
@@ -414,7 +416,7 @@ function PollVoteContent({
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[var(--radius-control)] bg-[var(--primary)] text-white text-sm font-semibold hover:bg-[var(--primary-hover)] transition-colors shadow-xs"
             >
               <BarChart2 className="w-4 h-4" />
-              <span>View live results</span>
+              <span>{t.vote.viewLiveResults}</span>
             </Link>
 
             <Button
@@ -426,12 +428,12 @@ function PollVoteContent({
               {copiedLink ? (
                 <>
                   <Check className="w-4 h-4 text-[var(--success)]" />
-                  <span>Voter link copied</span>
+                  <span>{t.vote.voterLinkCopied}</span>
                 </>
               ) : (
                 <>
                   <Share2 className="w-4 h-4" />
-                  <span>Share poll</span>
+                  <span>{t.vote.sharePoll}</span>
                 </>
               )}
             </Button>
@@ -444,13 +446,13 @@ function PollVoteContent({
             {/* Name input with Privacy Disclosure using TextInput */}
             <TextInput
               id="voter-name"
-              label="Your name or nickname"
-              description="Your name is visible to this poll’s creator, not to other voters."
+              label={t.vote.voterNameLabel}
+              description={t.vote.voterNameDesc}
               required
               disabled={isLocked || submitting}
               value={voterName}
               onChange={(e) => setVoterName(e.target.value)}
-              placeholder="Enter your name"
+              placeholder={t.vote.voterNamePlaceholder}
               maxLength={80}
             />
 
@@ -459,12 +461,12 @@ function PollVoteContent({
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-[var(--text)]">
                   {poll.isMultipleChoice
-                    ? "Choose one or more options"
-                    : "Select one option"}
+                    ? t.vote.chooseMultiple
+                    : t.vote.chooseSingle}
                 </span>
                 {poll.isEliminationMode && (
                   <span className="text-xs text-[var(--capacity)] font-medium">
-                    Limited spots per choice
+                    {t.vote.limitedSpots}
                   </span>
                 )}
               </div>
@@ -523,9 +525,9 @@ function PollVoteContent({
                 className="w-full text-base font-semibold shadow-xs"
               >
                 {isLocked ? (
-                  <span>Voting closed</span>
+                  <span>{t.vote.votingClosed}</span>
                 ) : (
-                  <span>Submit vote</span>
+                  <span>{t.vote.submitVote}</span>
                 )}
               </Button>
 
@@ -536,7 +538,7 @@ function PollVoteContent({
                   className="text-xs font-medium text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors inline-flex items-center gap-1.5 focus-ring rounded-sm py-1"
                 >
                   <BarChart2 className="w-3.5 h-3.5" />
-                  <span>View live results</span>
+                  <span>{t.vote.viewLiveResults}</span>
                 </Link>
               </div>
             </div>
@@ -550,7 +552,7 @@ function PollVoteContent({
           href="/"
           className="hover:text-[var(--primary)] transition-colors inline-flex items-center gap-1 font-medium"
         >
-          <span>Create a new poll</span>
+          <span>{t.vote.createAnotherPoll}</span>
         </Link>
 
         <Link
@@ -558,7 +560,7 @@ function PollVoteContent({
           className="hover:text-[var(--owner)] transition-colors inline-flex items-center gap-1 text-[var(--text-subtle)]"
         >
           <ShieldCheck className="w-3.5 h-3.5" />
-          <span>Poll owner? Owner dashboard</span>
+          <span>{t.vote.ownerDashboardLink}</span>
         </Link>
       </div>
     </div>

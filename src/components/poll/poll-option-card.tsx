@@ -3,6 +3,7 @@
 import React from "react";
 import { Check, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useLanguage } from "@/lib/language-context";
 
 export interface PollOptionCardProps {
   id: string;
@@ -31,6 +32,7 @@ export const PollOptionCard: React.FC<PollOptionCardProps> = ({
   onToggle,
   disabled = false,
 }) => {
+  const { t } = useLanguage();
   const spotsRemaining = Math.max(0, maxClaims - votes);
   const isFull = isEliminated || (isEliminationMode && spotsRemaining === 0);
   const isNearLimit = isEliminationMode && spotsRemaining === 1 && !isFull;
@@ -61,7 +63,7 @@ export const PollOptionCard: React.FC<PollOptionCardProps> = ({
           }
         }}
         className="sr-only"
-        aria-label={`${text}${isFull ? " (Full)" : ""}`}
+        aria-label={`${text}${isFull ? ` (${t.pollOption.full})` : ""}`}
       />
 
       <div className="flex items-center gap-3.5 min-w-0 flex-1 pr-3">
@@ -106,16 +108,16 @@ export const PollOptionCard: React.FC<PollOptionCardProps> = ({
         {isFull ? (
           <Badge variant="neutral" className="gap-1 font-semibold">
             <Lock className="w-3 h-3" />
-            <span>Full</span>
+            <span>{t.pollOption.full}</span>
           </Badge>
         ) : isEliminationMode ? (
           isNearLimit ? (
             <Badge variant="warning" className="font-semibold">
-              <span>1 spot remaining</span>
+              <span>{t.pollOption.oneSpotRemaining}</span>
             </Badge>
           ) : (
             <Badge variant="capacity" className="font-semibold">
-              <span>{spotsRemaining} of {maxClaims} spots left</span>
+              <span>{t.pollOption.spotsRemaining(spotsRemaining, maxClaims)}</span>
             </Badge>
           )
         ) : null}
