@@ -9,9 +9,9 @@ import { LanguageProvider } from "@/lib/language-context";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "choice. — Account-free, real-time polling",
+  title: "choice. — Sondages rapides et anonymes en temps réel",
   description:
-    "Fast, private online polling with live results, per-choice capacity, and owner response logs.",
+    "Sondages en ligne rapides et confidentiels avec résultats en direct, quotas par option et tableau de bord propriétaire.",
 };
 
 const themeScript = `
@@ -26,7 +26,7 @@ const themeScript = `
         document.documentElement.classList.remove('dark');
         document.documentElement.setAttribute('data-theme', 'light');
       }
-      var lang = localStorage.getItem('choice-language');
+      var lang = localStorage.getItem('choice-language') || 'fr';
       if (lang === 'fr' || lang === 'en') {
         document.documentElement.lang = lang;
       }
@@ -40,7 +40,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full" suppressHydrationWarning>
+    <html lang="fr" className="h-full" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

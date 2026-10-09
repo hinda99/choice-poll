@@ -435,4 +435,12 @@ export const translations = {
   },
 } as const;
 
-export type TranslationDictionary = typeof translations.en;
+type DeepString<T> = {
+  [K in keyof T]: T[K] extends (...args: infer Args) => unknown
+    ? (...args: Args) => string
+    : T[K] extends object
+    ? DeepString<T[K]>
+    : string;
+};
+
+export type TranslationDictionary = DeepString<typeof translations.en>;

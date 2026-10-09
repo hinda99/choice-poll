@@ -21,20 +21,16 @@ function subscribe(callback: () => void) {
 }
 
 function getStoredLanguage(): Language {
-  if (typeof window === "undefined") return "en";
+  if (typeof window === "undefined") return "fr";
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved === "fr" || saved === "en") return saved;
-    // Check browser preference if nothing stored
-    if (typeof navigator !== "undefined" && navigator.language?.toLowerCase().startsWith("fr")) {
-      return "fr";
-    }
   } catch {}
-  return "en";
+  return "fr";
 }
 
 function getServerLanguage(): Language {
-  return "en";
+  return "fr";
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -66,7 +62,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     language,
     setLanguage,
     toggleLanguage,
-    t: (translations[language] || translations.en) as TranslationDictionary,
+    t: (translations[language] || translations.fr) as unknown as TranslationDictionary,
   };
 
   return (
@@ -80,10 +76,10 @@ export function useLanguage(): LanguageContextType {
   const context = useContext(LanguageContext);
   if (!context) {
     return {
-      language: "en",
+      language: "fr",
       setLanguage: () => {},
       toggleLanguage: () => {},
-      t: translations.en as TranslationDictionary,
+      t: translations.fr as unknown as TranslationDictionary,
     };
   }
   return context;
