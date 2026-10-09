@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { PageHeading } from "@/components/ui/page-heading";
 import { CapacitySlider } from "@/components/poll/capacity-slider";
+import { VoteLimitSlider } from "@/components/poll/vote-limit-slider";
+import { TimeLimitSlider } from "@/components/poll/time-limit-slider";
 import { ShareDialog } from "@/components/poll/share-dialog";
 import { useLanguage } from "@/lib/language-context";
 
@@ -334,36 +336,10 @@ export default function CreatePollPage() {
                 />
 
                 {hasMaxVotes && (
-                  <div className="p-3.5 rounded-[var(--radius-control)] bg-[var(--surface-muted)] border border-[var(--border)] space-y-3">
-                    <div className="flex items-center justify-between text-xs font-semibold text-[var(--text)]">
-                      <span>{t.create.closesAfter}</span>
-                      <span className="font-mono tabular-nums text-sm font-bold text-[var(--primary)]">
-                        {t.create.submissionsCount(maxTotalVotes)}
-                      </span>
-                    </div>
-
-                    {/* Presets */}
-                    <div className="flex flex-wrap gap-1.5">
-                      {[10, 25, 50, 100, 150, 200].map((preset) => (
-                        <button
-                          key={preset}
-                          type="button"
-                          onClick={() => setMaxTotalVotes(preset)}
-                          className={`px-2.5 py-1 text-xs font-mono font-semibold rounded-md border transition-colors cursor-pointer ${
-                            maxTotalVotes === preset
-                              ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-xs"
-                              : "bg-[var(--surface)] text-[var(--text)] border-[var(--border)] hover:bg-[var(--surface-muted)]"
-                          }`}
-                        >
-                          {preset}
-                        </button>
-                      ))}
-                    </div>
-
-                    <p className="text-[11px] text-[var(--text-muted)] pt-1 border-t border-[var(--border)]">
-                      {t.create.closesAfterNotice(maxTotalVotes)}
-                    </p>
-                  </div>
+                  <VoteLimitSlider
+                    value={maxTotalVotes}
+                    onChange={setMaxTotalVotes}
+                  />
                 )}
               </div>
 
@@ -377,36 +353,10 @@ export default function CreatePollPage() {
                 />
 
                 {hasTimeLimit && (
-                  <div className="p-3.5 rounded-[var(--radius-control)] bg-[var(--surface-muted)] border border-[var(--border)] space-y-3">
-                    <div className="flex items-center justify-between text-xs font-semibold text-[var(--text)]">
-                      <span>{t.create.votingDuration}</span>
-                      <span className="font-mono tabular-nums text-sm font-bold text-[var(--primary)]">
-                        {timeLimitHours}h
-                      </span>
-                    </div>
-
-                    {/* Presets */}
-                    <div className="flex flex-wrap gap-1.5">
-                      {[1, 2, 4, 8, 12, 24].map((preset) => (
-                        <button
-                          key={preset}
-                          type="button"
-                          onClick={() => setTimeLimitHours(preset)}
-                          className={`px-2.5 py-1 text-xs font-mono font-semibold rounded-md border transition-colors cursor-pointer ${
-                            timeLimitHours === preset
-                              ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-xs"
-                              : "bg-[var(--surface)] text-[var(--text)] border-[var(--border)] hover:bg-[var(--surface-muted)]"
-                          }`}
-                        >
-                          {preset}h
-                        </button>
-                      ))}
-                    </div>
-
-                    <p className="text-[11px] text-[var(--text-muted)] pt-1 border-t border-[var(--border)]">
-                      {t.create.closesAfterHoursNotice(timeLimitHours)}
-                    </p>
-                  </div>
+                  <TimeLimitSlider
+                    value={timeLimitHours}
+                    onChange={setTimeLimitHours}
+                  />
                 )}
               </div>
             </Card>
