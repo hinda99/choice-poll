@@ -47,25 +47,25 @@ async function test25ChoicesAnd200Votes() {
     throw new Error("Should have rejected 26 choices!");
   }
 
-  // Test 3: Elimination mode with 200 votes per choice capacity
-  console.log("\nTesting Elimination mode with 200 capacity per choice...");
-  const resElim200 = await fetch(`${baseUrl}/api/polls`, {
+  // Test 3: Elimination mode with 10 votes per choice capacity
+  console.log("\nTesting Elimination mode with 10 capacity per choice...");
+  const resElim10 = await fetch(`${baseUrl}/api/polls`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      question: "Conference Room Allocation (Up to 200 per room):",
+      question: "Conference Room Allocation (Up to 10 per room):",
       options: ["Auditorium A", "Auditorium B"],
       isEliminationMode: true,
-      maxPerOption: 200,
+      maxPerOption: 10,
       maxTotalVotes: 200,
     }),
   });
-  const dataElim200 = await resElim200.json();
-  const pollElim = dataElim200.poll;
+  const dataElim10 = await resElim10.json();
+  const pollElim = dataElim10.poll;
   console.log("Elimination Poll Created:", pollElim.id);
   console.log("Option 1 maxClaims:", pollElim.options[0].maxClaims);
-  if (pollElim.options[0].maxClaims !== 200) {
-    throw new Error(`Expected 200 maxClaims, got ${pollElim.options[0].maxClaims}`);
+  if (pollElim.options[0].maxClaims !== 10) {
+    throw new Error(`Expected 10 maxClaims, got ${pollElim.options[0].maxClaims}`);
   }
 
   // Test 4: Vote Quota Enforcement

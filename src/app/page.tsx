@@ -13,6 +13,7 @@ import {
   Flame,
   Clock,
   Users,
+  Sun,
 } from "lucide-react";
 
 export default function CreatePollPage() {
@@ -260,53 +261,94 @@ export default function CreatePollPage() {
                 </div>
               </label>
 
-              {/* Max votes per choice selector (up to 200) */}
+              {/* Max votes per choice selector (Windows 11 Brightness Slider Style, 1 to 10 max) */}
               {isEliminationMode && (
                 <div className="mt-4 pt-3.5 border-t border-amber-200/80 dark:border-amber-900/60 flex flex-col gap-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                     <div>
-                      <span className="text-xs font-bold text-slate-900 dark:text-white block">
-                        Max votes allowed per choice (1 to 200):
-                      </span>
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                          Max votes allowed per choice (1 to 10):
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-100 dark:bg-cyan-950/80 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">
+                          {maxPerOption} {maxPerOption === 1 ? "person" : "people"} max
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
                         {maxPerOption === 1
                           ? "Strict single-claim: 1 person takes the choice, then it is eliminated."
                           : `Up to ${maxPerOption} people can choose each option before it is eliminated.`}
                       </span>
                     </div>
-
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min={1}
-                        max={200}
-                        value={maxPerOption}
-                        onChange={(e) =>
-                          setMaxPerOption(
-                            Math.min(200, Math.max(1, Number(e.target.value) || 1))
-                          )
-                        }
-                        className="w-20 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-center"
-                      />
-                      <span className="text-xs text-slate-500">max/choice</span>
-                    </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {[1, 2, 5, 10, 25, 50, 100, 200].map((num) => (
-                      <button
-                        key={num}
-                        type="button"
-                        onClick={() => setMaxPerOption(num)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
-                          maxPerOption === num
-                            ? "bg-amber-500 text-white shadow-sm scale-105"
-                            : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-amber-400"
-                        }`}
-                      >
-                        {num}
-                      </button>
-                    ))}
+                  {/* Windows 11 Action Center Brightness Slider */}
+                  <div className="p-3 sm:p-4 rounded-xl bg-slate-900/5 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 space-y-3">
+                    <div className="flex items-center gap-3">
+                      {/* Sun / Brightness Icon */}
+                      <div className="w-8 h-8 rounded-lg bg-cyan-500/10 dark:bg-cyan-500/20 flex items-center justify-center text-cyan-600 dark:text-cyan-400 shrink-0">
+                        <Sun className="w-4 h-4" />
+                      </div>
+
+                      {/* Slider Input Track */}
+                      <div className="relative flex-1 flex items-center">
+                        <input
+                          type="range"
+                          min={1}
+                          max={10}
+                          step={1}
+                          value={maxPerOption}
+                          onChange={(e) => setMaxPerOption(Number(e.target.value))}
+                          aria-label="Max votes allowed per choice"
+                          aria-valuemin={1}
+                          aria-valuemax={10}
+                          aria-valuenow={maxPerOption}
+                          className="win11-brightness-slider"
+                          style={{
+                            background: `linear-gradient(to right, #06b6d4 0%, #06b6d4 ${
+                              ((maxPerOption - 1) / 9) * 100
+                            }%, rgba(148, 163, 184, 0.25) ${
+                              ((maxPerOption - 1) / 9) * 100
+                            }%, rgba(148, 163, 184, 0.25) 100%)`,
+                          }}
+                        />
+                      </div>
+
+                      {/* Numeric Indicator */}
+                      <div className="min-w-14 text-right shrink-0">
+                        <span className="text-sm font-extrabold text-cyan-600 dark:text-cyan-400 font-mono">
+                          {maxPerOption}
+                        </span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium ml-1">
+                          / 10
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Step Marks (1 to 10) */}
+                    <div className="flex items-center justify-between px-1 sm:px-2 text-[11px] text-slate-400 dark:text-slate-500 select-none">
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                        <button
+                          key={num}
+                          type="button"
+                          onClick={() => setMaxPerOption(num)}
+                          className={`hover:text-cyan-500 transition cursor-pointer flex flex-col items-center gap-1 py-0.5 px-1 rounded-md ${
+                            maxPerOption === num
+                              ? "text-cyan-600 dark:text-cyan-400 font-bold scale-110"
+                              : "hover:bg-slate-100 dark:hover:bg-slate-800/60"
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full transition ${
+                              maxPerOption === num
+                                ? "bg-cyan-500 scale-125 shadow-sm shadow-cyan-500/50"
+                                : "bg-slate-300 dark:bg-slate-700"
+                            }`}
+                          />
+                          <span className="font-mono text-[10px] sm:text-xs">{num}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}

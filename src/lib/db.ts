@@ -136,7 +136,7 @@ export async function createPoll(input: CreatePollInput): Promise<Poll> {
 
   const isElim = !!input.isEliminationMode;
   const maxPerOption = isElim
-    ? Math.min(200, Math.max(1, Number(input.maxPerOption) || 1))
+    ? Math.min(10, Math.max(1, Number(input.maxPerOption) || 1))
     : undefined;
 
   const maxTotalVotes = input.maxTotalVotes
