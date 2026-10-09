@@ -332,21 +332,23 @@ function PollVoteContent({
     <div className="max-w-[660px] mx-auto space-y-6">
       {/* Discreet Owner Banner if authorized */}
       {isOwner && (
-        <div className="p-3.5 rounded-[var(--radius-control)] border border-[var(--owner)]/30 bg-[var(--warning-soft)]/50 flex items-center justify-between gap-3 text-xs">
+        <div className="p-3.5 rounded-[var(--radius-control)] border border-[var(--owner)]/30 bg-[var(--warning-soft)]/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-[var(--owner)]" />
-            <span className="font-semibold text-[var(--owner)]">
-              Owner preview
-            </span>
-            <span className="text-[var(--text-muted)] hidden sm:inline">
-              — You have creator privileges
-            </span>
+            <ShieldCheck className="w-4 h-4 text-[var(--owner)] shrink-0" />
+            <div>
+              <span className="font-semibold text-[var(--owner)]">
+                Creator preview
+              </span>
+              <span className="text-[var(--text-muted)] ml-1.5 hidden sm:inline">
+                — Regular voters do not see owner controls
+              </span>
+            </div>
           </div>
           <Link
-            href={`/poll/${id}/results${adminKey ? `?adminKey=${adminKey}` : ""}`}
+            href={`/poll/${id}/results${adminKey ? `?adminKey=${adminKey}&view=owner` : ""}`}
             className="font-bold text-[var(--owner)] hover:underline inline-flex items-center gap-1 shrink-0"
           >
-            <span>Owner results</span>
+            <span>Owner dashboard</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -459,7 +461,7 @@ function PollVoteContent({
 
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
-              href={`/poll/${id}/results${adminKey ? `?adminKey=${adminKey}` : ""}`}
+              href={`/poll/${id}/results`}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[var(--radius-control)] bg-[var(--primary)] text-white text-sm font-semibold hover:bg-[var(--primary-hover)] transition-colors shadow-xs"
             >
               <BarChart2 className="w-4 h-4" />
@@ -581,7 +583,7 @@ function PollVoteContent({
               {/* Low-emphasis link beneath button */}
               <div className="text-center">
                 <Link
-                  href={`/poll/${id}/results${adminKey ? `?adminKey=${adminKey}` : ""}`}
+                  href={`/poll/${id}/results`}
                   className="text-xs font-medium text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors inline-flex items-center gap-1.5 focus-ring rounded-sm py-1"
                 >
                   <BarChart2 className="w-3.5 h-3.5" />

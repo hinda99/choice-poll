@@ -11,6 +11,7 @@ import {
   Lock,
   ArrowUpDown,
   ListOrdered,
+  ShieldCheck,
 } from "lucide-react";
 import { Poll } from "@/lib/types";
 import { Card } from "@/components/ui/card";
@@ -44,6 +45,7 @@ function PollResultsContent({
 
   const [adminKey, setAdminKey] = useState<string>("");
   const [isOwner, setIsOwner] = useState<boolean>(false);
+  const [ownerViewMode, setOwnerViewMode] = useState<"voter" | "owner">("voter");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -56,6 +58,9 @@ function PollResultsContent({
         if (keyFromUrl && !keyFromStorage) {
           localStorage.setItem(`poll_admin_${id}`, keyFromUrl);
         }
+      }
+      if (urlParams.get("view") === "owner") {
+        setTimeout(() => setOwnerViewMode("owner"), 0);
       }
     }
   }, [id]);
@@ -265,6 +270,51 @@ function PollResultsContent({
 
   return (
     <div className="max-w-[1000px] mx-auto space-y-8">
+      {/* Discreet Owner View Switcher (Only visible to verified poll creator) */}
+      {isOwner && adminKey && (
+        <div className="p-3.5 rounded-[var(--radius-control)] border border-[var(--owner)]/30 bg-[var(--surface)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-[var(--owner)] shrink-0" />
+            <div>
+              <span className="font-bold text-[var(--owner)]">
+                {ownerViewMode === "voter" ? "Voter view preview" : "Owner dashboard active"}
+              </span>
+              <span className="text-[var(--text-muted)] ml-1.5 hidden md:inline">
+                {ownerViewMode === "voter"
+                  ? "— Showing exactly what voters see. Owner controls are hidden."
+                  : "— Showing private response logs and administrative tools."}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 p-0.5 rounded-lg bg-[var(--surface-muted)] border border-[var(--border)] shrink-0">
+            <button
+              type="button"
+              onClick={() => setOwnerViewMode("voter")}
+              className={`px-3 py-1.5 rounded-md font-semibold text-xs transition-colors cursor-pointer ${
+                ownerViewMode === "voter"
+                  ? "bg-[var(--surface)] text-[var(--text)] shadow-xs"
+                  : "text-[var(--text-muted)] hover:text-[var(--text)]"
+              }`}
+            >
+              Voter view
+            </button>
+            <button
+              type="button"
+              onClick={() => setOwnerViewMode("owner")}
+              className={`px-3 py-1.5 rounded-md font-semibold text-xs transition-colors cursor-pointer flex items-center gap-1.5 ${
+                ownerViewMode === "owner"
+                  ? "bg-[var(--owner)] text-white shadow-xs"
+                  : "text-[var(--text-muted)] hover:text-[var(--text)]"
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Owner dashboard</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 1. Poll question + Top controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-[var(--border)]">
         <div className="space-y-1.5 min-w-0 flex-1">
@@ -452,8 +502,8 @@ function PollResultsContent({
         </div>
       </div>
 
-      {/* 5. Owner Controls (Authenticated creator only) */}
-      {isOwner && adminKey && (
+      {/* 5. Owner Controls (Authenticated creator only when owner mode is active) */}
+      {isOwner && adminKey && ownerViewMode === "owner" && (
         <OwnerPanel poll={poll} adminKey={adminKey} />
       )}
 

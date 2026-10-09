@@ -98,7 +98,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
             <ExternalLink className="w-3.5 h-3.5 text-[var(--text-muted)]" />
           </Link>
           <Link
-            href={`/poll/${pollId}/results${creatorKey ? `?adminKey=${creatorKey}` : ""}`}
+            href={`/poll/${pollId}/results`}
             className="flex-1 inline-flex items-center justify-center gap-2 h-11 px-4 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-muted)] text-[var(--text)] text-sm font-semibold transition-colors"
           >
             <BarChart2 className="w-3.5 h-3.5 text-[var(--text-muted)]" />
