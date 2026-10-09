@@ -3,22 +3,24 @@
 import { Suspense, use, useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  BarChart3,
+  Vote,
   Share2,
   Check,
-  Flame,
-  Award,
-  Vote,
-  PlusCircle,
-  RefreshCw,
-  AlertCircle,
-  Users,
-  FileSpreadsheet,
-  Clock,
-  Download,
-  UserCheck,
+  Crown,
+  Plus,
+  Lock,
+  ArrowUpDown,
+  ListOrdered,
 } from "lucide-react";
 import { Poll } from "@/lib/types";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { useToast } from "@/components/ui/toast";
+import { VoteResultsBar } from "@/components/poll/vote-results-bar";
+import { OwnerPanel } from "@/components/owner/owner-panel";
+import { LiveConnectionStatus, ConnectionState } from "@/components/ui/live-connection-status";
 
 function PollResultsContent({
   params,
@@ -26,29 +28,31 @@ function PollResultsContent({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { showToast } = useToast();
 
   const [poll, setPoll] = useState<Poll | null>(null);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
-  const [hasVoted, setHasVoted] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [timeLeft, setTimeLeft] = useState<string>("");
   const [isExpired, setIsExpired] = useState<boolean>(false);
+  const [connectionState, setConnectionState] = useState<ConnectionState>("connected");
+
+  // Optional sort toggle per Section 9 (Default: original choice order)
+  const [sortByVotes, setSortByVotes] = useState(false);
 
   const [adminKey, setAdminKey] = useState<string>("");
   const [isOwner, setIsOwner] = useState<boolean>(false);
-  const [adminCopied, setAdminCopied] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setHasVoted(Boolean(localStorage.getItem(`voted_${id}`)));
       const urlParams = new URLSearchParams(window.location.search);
       const keyFromUrl = urlParams.get("adminKey");
       const keyFromStorage = localStorage.getItem(`poll_admin_${id}`);
       const effectiveKey = keyFromUrl || keyFromStorage || "";
       if (effectiveKey) {
-        setAdminKey(effectiveKey);
+        setTimeout(() => setAdminKey(effectiveKey), 0);
         if (keyFromUrl && !keyFromStorage) {
           localStorage.setItem(`poll_admin_${id}`, keyFromUrl);
         }
@@ -66,14 +70,17 @@ function PollResultsContent({
 
       if (diff <= 0) {
         setIsExpired(true);
-        setTimeLeft("Voting Closed");
+        setTimeLeft("Voting closed");
       } else {
         setIsExpired(false);
         const hours = Math.floor(diff / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        const pad = (n: number) => String(n).padStart(2, "0");
         setTimeLeft(
-          `${hours > 0 ? `${hours}h ` : ""}${minutes}m ${seconds < 10 ? "0" : ""}${seconds}s`
+          hours > 0
+            ? `${hours}h ${pad(minutes)}m ${pad(seconds)}s`
+            : `${pad(minutes)}m ${pad(seconds)}s`
         );
       }
     };
@@ -85,17 +92,11 @@ function PollResultsContent({
 
   useEffect(() => {
     let isMounted = true;
-    const urlParams =
-      typeof window !== "undefined"
-        ? new URLSearchParams(window.location.search)
-        : null;
     const effectiveKey =
       adminKey ||
-      urlParams?.get("adminKey") ||
       (typeof window !== "undefined"
-        ? localStorage.getItem(`poll_admin_${id}`)
-        : "") ||
-      "";
+        ? localStorage.getItem(`poll_admin_${id}`) || ""
+        : "");
 
     const fetchUrl = effectiveKey
       ? `/api/polls/${id}?adminKey=${effectiveKey}`
@@ -116,12 +117,14 @@ function PollResultsContent({
           if (data.isOwner) setIsOwner(true);
           setLoading(false);
           setLastUpdated(new Date());
+          setConnectionState("connected");
         }
       })
       .catch((err) => {
         if (isMounted) {
           setErrorMsg(err.message);
           setLoading(false);
+          setConnectionState("disconnected");
         }
       });
 
@@ -129,22 +132,29 @@ function PollResultsContent({
     let eventSource: EventSource | null = null;
     try {
       eventSource = new EventSource(streamUrl);
+      eventSource.onopen = () => {
+        if (isMounted) setConnectionState("connected");
+      };
       eventSource.onmessage = (event) => {
         if (event.data && isMounted) {
           try {
             const updatedPoll = JSON.parse(event.data);
             setPoll(updatedPoll);
             setLastUpdated(new Date());
+            setConnectionState("connected");
           } catch {
             // keepalive
           }
         }
       };
+      eventSource.onerror = () => {
+        if (isMounted) setConnectionState("reconnecting");
+      };
     } catch {
-      // SSE not supported
+      // SSE unsupported
     }
 
-    // 3. Periodic fallback poll
+    // 3. Fallback sync
     const interval = setInterval(async () => {
       try {
         const res = await fetch(fetchUrl);
@@ -154,10 +164,11 @@ function PollResultsContent({
             setPoll(data.poll);
             if (data.isOwner) setIsOwner(true);
             setLastUpdated(new Date());
+            setConnectionState("connected");
           }
         }
       } catch {
-        // ignore
+        if (isMounted) setConnectionState("reconnecting");
       }
     }, 3500);
 
@@ -168,372 +179,313 @@ function PollResultsContent({
     };
   }, [id, adminKey]);
 
-  const handleCopyLink = () => {
+  const handleCopyLink = async () => {
     if (typeof window !== "undefined") {
       const shareUrl = `${window.location.origin}/poll/${id}`;
-      navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const handleCopyAdminLink = () => {
-    if (typeof window !== "undefined") {
-      const adminUrl = `${window.location.origin}/poll/${id}/results?adminKey=${adminKey}`;
-      navigator.clipboard.writeText(adminUrl);
-      setAdminCopied(true);
-      setTimeout(() => setAdminCopied(false), 2000);
+      await navigator.clipboard.writeText(shareUrl);
+      setCopiedLink(true);
+      showToast("Voter link copied to clipboard");
+      setTimeout(() => setCopiedLink(false), 2000);
     }
   };
 
   if (loading) {
     return (
-      <div className="max-w-xl mx-auto py-16 text-center">
-        <div className="w-10 h-10 border-4 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-slate-500 font-medium">Loading live results...</p>
+      <div className="max-w-[1000px] mx-auto space-y-6 py-6">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-6 w-20" />
+          <Skeleton className="h-6 w-32" />
+        </div>
+        <Skeleton className="h-10 w-2/3" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
 
   if (!poll) {
     return (
-      <div className="max-w-xl mx-auto py-16 text-center">
-        <div className="w-14 h-14 rounded-2xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 flex items-center justify-center mx-auto mb-4">
-          <AlertCircle className="w-7 h-7" />
-        </div>
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-          Poll Not Found
-        </h2>
-        <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm">
-          {errorMsg || "Unable to retrieve poll details."}
-        </p>
-        <Link
-          href="/"
-          className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-medium text-sm hover:bg-indigo-700 transition"
-        >
-          Create a New Poll
-        </Link>
-      </div>
+      <EmptyState
+        title="Poll not found"
+        description={errorMsg || "Unable to retrieve poll details."}
+        action={
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center h-11 px-5 rounded-[var(--radius-control)] bg-[var(--primary)] text-white text-sm font-semibold hover:bg-[var(--primary-hover)] transition-colors"
+          >
+            Create a new poll
+          </Link>
+        }
+        className="max-w-[660px] mx-auto py-16"
+      />
     );
   }
 
-  // Calculate percentages and leading option
-  const totalVotesCast = poll.options.reduce((sum, opt) => sum + opt.votes, 0);
+  // Calculations: Differentiate total voters (accepted submissions) and total selections cast
+  const totalVoters = poll.totalVotes; // Submissions accepted by server
+  const totalSelections = poll.options.reduce((sum, opt) => sum + opt.votes, 0);
+
   const highestVoteCount = Math.max(...poll.options.map((o) => o.votes), 0);
+  const leadingOptions =
+    highestVoteCount > 0
+      ? poll.options.filter((o) => o.votes === highestVoteCount)
+      : [];
+
+  const isLeadingTie = leadingOptions.length > 1;
+  const leadingChoiceText =
+    highestVoteCount === 0
+      ? "—"
+      : isLeadingTie
+      ? "Tie"
+      : leadingOptions[0]?.text || "—";
+
+  const isMaxVotesReached = Boolean(
+    poll.maxTotalVotes && poll.totalVotes >= poll.maxTotalVotes
+  );
+  const pollStatusLabel = isExpired
+    ? "Voting closed"
+    : isMaxVotesReached
+    ? "Vote cap reached"
+    : "Open";
+
+  // Sorting options: default original choice order, optional sort by votes
+  const displayedOptions = [...poll.options];
+  if (sortByVotes) {
+    displayedOptions.sort((a, b) => b.votes - a.votes);
+  }
+
+  // Denominator for choice vote share:
+  // In single-choice: totalVoters (which equals totalSelections).
+  // In multi-choice: totalVoters (percentage of respondents/voters who picked this option).
+  const calculationBase = totalVoters;
 
   return (
-    <div className="max-w-2xl mx-auto">
-      {/* Top Header Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Live Results
-          </span>
-
-          {poll.isEliminationMode && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-              <Flame className="w-3.5 h-3.5 text-amber-600" />
-              Claim Mode
+    <div className="max-w-[1000px] mx-auto space-y-8">
+      {/* 1. Poll question + Top controls */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-[var(--border)]">
+        <div className="space-y-1.5 min-w-0 flex-1">
+          <div className="flex items-center gap-2.5">
+            <LiveConnectionStatus status={connectionState} />
+            <span className="text-xs text-[var(--text-muted)] font-mono tabular-nums">
+              Synced {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
             </span>
-          )}
+          </div>
 
-          {poll.maxTotalVotes && (
-            <span
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                totalVotesCast >= poll.maxTotalVotes
-                  ? "bg-amber-50 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800"
-                  : "bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span>
-                {totalVotesCast >= poll.maxTotalVotes
-                  ? `Quota Full (${totalVotesCast}/${poll.maxTotalVotes})`
-                  : `${totalVotesCast}/${poll.maxTotalVotes} votes`}
-              </span>
-            </span>
-          )}
-
-          {poll.expiresAt && (
-            <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
-                isExpired
-                  ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900"
-                  : "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800"
-              }`}
-            >
-              <Clock className="w-3.5 h-3.5" />
-              <span>{isExpired ? "Poll Ended" : `Closes in ${timeLeft}`}</span>
-            </span>
-          )}
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--text)] leading-snug break-words">
+            {poll.question}
+          </h1>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Export to Sheets Button (Owner Only) */}
-          {isOwner && (
-            <a
-              href={`/api/polls/${id}/export?adminKey=${adminKey}`}
-              download={`poll-${id}-results.csv`}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition shadow-sm shadow-emerald-600/20"
-              title="Download CSV for Google Sheets / Excel (Owner Only)"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Export to Sheets</span>
-            </a>
-          )}
-
-          {!hasVoted && !isExpired && (
-            <Link
-              href={`/poll/${id}`}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-semibold text-xs border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition"
-            >
-              <Vote className="w-3.5 h-3.5" />
-              <span>Cast Your Vote</span>
-            </Link>
-          )}
+        {/* Action Controls */}
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <Link
+            href={`/poll/${id}`}
+            className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-muted)] text-xs font-semibold text-[var(--text)] transition-colors shadow-xs"
+          >
+            <Vote className="w-3.5 h-3.5 text-[var(--primary)]" />
+            <span>Go to voting</span>
+          </Link>
 
           <button
+            type="button"
             onClick={handleCopyLink}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-indigo-600 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl transition shadow-sm"
+            className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-muted)] text-xs font-semibold text-[var(--text)] transition-colors shadow-xs cursor-pointer focus-ring"
           >
-            {copied ? (
+            {copiedLink ? (
               <>
-                <Check className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="text-emerald-600">Voter Link Copied!</span>
+                <Check className="w-3.5 h-3.5 text-[var(--success)]" />
+                <span className="text-[var(--success)]">Link copied</span>
               </>
             ) : (
               <>
-                <Share2 className="w-3.5 h-3.5" />
-                <span>Share Voter Link</span>
+                <Share2 className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                <span>Share voter link</span>
               </>
             )}
           </button>
         </div>
       </div>
 
-      {/* Owner Badge & Controls Banner */}
-      {isOwner && (
-        <div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-base shrink-0 shadow-sm">
-              👑
-            </div>
-            <div>
-              <p className="text-xs font-bold text-amber-950 dark:text-amber-200">
-                Poll Creator Dashboard
-              </p>
-              <p className="text-[11px] text-amber-800 dark:text-amber-400">
-                You have exclusive access to individual voter responses and Google Sheets CSV export.
-              </p>
-            </div>
+      {/* 3. Three KPI cards per Section 9 */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* KPI 1: Total votes / Total voters (accurate metric semantics) */}
+        <Card className="p-5 space-y-1 bg-[var(--surface)]">
+          <span className="text-xs font-medium text-[var(--text-muted)] block">
+            {poll.isMultipleChoice ? "Total voters" : "Total votes cast"}
+          </span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-bold font-mono tabular-nums text-[var(--text)]">
+              {totalVoters}
+            </span>
+            {poll.maxTotalVotes && (
+              <span className="text-xs text-[var(--text-subtle)] font-mono tabular-nums">
+                / {poll.maxTotalVotes} submissions max
+              </span>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleCopyLink}
-              className="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold hover:border-indigo-400 transition shadow-sm"
-            >
-              📋 {copied ? "Voter Link Copied!" : "Copy Voter Link"}
-            </button>
-            <button
-              onClick={handleCopyAdminLink}
-              className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 transition shadow-sm"
-              title="Save this private admin link to manage this poll from any device"
-            >
-              🔑 {adminCopied ? "Admin Link Copied!" : "Save Admin Link"}
-            </button>
-          </div>
-        </div>
-      )}
+          {poll.isMultipleChoice && (
+            <p className="text-[11px] text-[var(--text-subtle)] font-mono tabular-nums pt-0.5">
+              {totalSelections} individual selections
+            </p>
+          )}
+        </Card>
 
-      {/* Main Results Card */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none p-6 sm:p-8">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-snug">
-          {poll.question}
-        </h1>
-
-        <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pb-4 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-indigo-500" />
-            <span className="font-semibold text-slate-800 dark:text-slate-200">
-              {totalVotesCast} {totalVotesCast === 1 ? "vote" : "votes"} cast
+        {/* KPI 2: Leading choice */}
+        <Card className="p-5 space-y-1 bg-[var(--surface)]">
+          <span className="text-xs font-medium text-[var(--text-muted)] block">
+            Leading choice
+          </span>
+          <div className="flex items-center gap-2 min-w-0">
+            {highestVoteCount > 0 && !isLeadingTie && (
+              <Crown className="w-4 h-4 text-[var(--primary)] shrink-0" />
+            )}
+            <span className="text-xl sm:text-2xl font-bold text-[var(--text)] truncate">
+              {leadingChoiceText}
             </span>
           </div>
-          <span className="text-[11px]">
-            Updated {lastUpdated.toLocaleTimeString()}
+          {isLeadingTie && highestVoteCount > 0 && (
+            <p className="text-[11px] text-[var(--text-subtle)]">
+              {leadingOptions.length} choices tied at {highestVoteCount} votes
+            </p>
+          )}
+        </Card>
+
+        {/* KPI 3: Poll status */}
+        <Card className="p-5 space-y-1 bg-[var(--surface)]">
+          <span className="text-xs font-medium text-[var(--text-muted)] block">
+            Poll status
           </span>
+          <div className="flex items-center gap-2">
+            {isExpired || isMaxVotesReached ? (
+              <Badge variant="warning" className="text-xs font-bold py-1">
+                <Lock className="w-3 h-3" />
+                <span>{pollStatusLabel}</span>
+              </Badge>
+            ) : (
+              <Badge variant="success" className="text-xs font-bold py-1">
+                <span>{pollStatusLabel}</span>
+              </Badge>
+            )}
+            {poll.expiresAt && !isExpired && (
+              <span className="text-xs font-mono tabular-nums text-[var(--text-muted)]">
+                {timeLeft}
+              </span>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {/* 4. Vote distribution (Horizontal bars) */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <h2 className="text-base font-bold text-[var(--text)] tracking-tight">
+              Vote distribution
+            </h2>
+            <p className="text-xs text-[var(--text-muted)]">
+              {poll.isMultipleChoice
+                ? "Percentages reflect share of voters who chose each option"
+                : "Percentages reflect share of total votes"}
+            </p>
+          </div>
+
+          {/* Optional sort control per Section 9 */}
+          <button
+            type="button"
+            onClick={() => setSortByVotes(!sortByVotes)}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--radius-badge)] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-muted)] text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text)] transition-colors cursor-pointer focus-ring"
+          >
+            {sortByVotes ? (
+              <>
+                <ListOrdered className="w-3.5 h-3.5" />
+                <span>Sort: Most votes</span>
+              </>
+            ) : (
+              <>
+                <ArrowUpDown className="w-3.5 h-3.5" />
+                <span>Sort: Original order</span>
+              </>
+            )}
+          </button>
         </div>
 
-        {/* Results Bars */}
-        <div className="mt-6 space-y-4">
-          {poll.options.map((option) => {
-            const percentage =
-              totalVotesCast > 0
-                ? Math.round((option.votes / totalVotesCast) * 100)
-                : 0;
+        {/* Empty state notice if zero votes, but STILL show choices and empty tracks per Section 9 & 11 */}
+        {totalVoters === 0 && (
+          <div className="p-4 rounded-[var(--radius-control)] bg-[var(--surface-muted)]/60 border border-[var(--border)] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[var(--text-muted)]">
+            <span>No votes recorded yet. Share your poll link to collect responses.</span>
+            <Link
+              href={`/poll/${id}`}
+              className="inline-flex items-center gap-1 font-semibold text-[var(--primary)] hover:underline shrink-0"
+            >
+              <Vote className="w-3.5 h-3.5" />
+              <span>Cast first vote</span>
+            </Link>
+          </div>
+        )}
 
+        {/* Horizontal Bars */}
+        <div className="space-y-2.5">
+          {displayedOptions.map((option) => {
             const isLeading =
-              highestVoteCount > 0 && option.votes === highestVoteCount;
-
-            const limit = option.maxClaims || poll.maxPerOption || 1;
-            const isFull = Boolean(option.isEliminated || option.votes >= limit);
+              highestVoteCount > 0 &&
+              option.votes === highestVoteCount &&
+              !isLeadingTie;
 
             return (
-              <div
+              <VoteResultsBar
                 key={option.id}
-                className="relative overflow-hidden p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40"
-              >
-                {/* Background Progress Fill Bar */}
-                <div
-                  className={`absolute inset-y-0 left-0 transition-all duration-700 ease-out ${
-                    isFull
-                      ? "bg-slate-300/40 dark:bg-slate-700/40"
-                      : isLeading
-                      ? "bg-indigo-500/15 dark:bg-indigo-500/25"
-                      : "bg-slate-200/50 dark:bg-slate-700/30"
-                  }`}
-                  style={{ width: `${percentage}%` }}
-                />
-
-                {/* Content */}
-                <div className="relative z-10 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <span
-                      className={`font-semibold text-sm sm:text-base truncate ${
-                        isFull
-                          ? "line-through text-slate-400 dark:text-slate-500"
-                          : "text-slate-900 dark:text-white"
-                      }`}
-                    >
-                      {option.text}
-                    </span>
-
-                    {isLeading && !isFull && totalVotesCast > 0 && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-600 text-white shrink-0">
-                        <Award className="w-3 h-3" /> Leading
-                      </span>
-                    )}
-
-                    {isFull && poll.isEliminationMode ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-300/50 dark:border-amber-800 shrink-0">
-                        <Flame className="w-2.5 h-2.5 text-amber-600" /> Full ({option.votes}/{limit})
-                      </span>
-                    ) : (
-                      poll.isEliminationMode && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800 shrink-0">
-                          {limit - option.votes} open ({option.votes}/{limit})
-                        </span>
-                      )
-                    )}
-                  </div>
-
-                  <div className="flex items-baseline gap-2 shrink-0">
-                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                      {option.votes} {option.votes === 1 ? "vote" : "votes"}
-                    </span>
-                    <span className="text-base font-extrabold text-slate-900 dark:text-white min-w-[3rem] text-right">
-                      {percentage}%
-                    </span>
-                  </div>
-                </div>
-              </div>
+                text={option.text}
+                votes={option.votes}
+                totalVotes={calculationBase}
+                isLeading={isLeading}
+                isEliminationMode={poll.isEliminationMode}
+                maxClaims={option.maxClaims || poll.maxPerOption || 1}
+                isEliminated={option.isEliminated}
+                isMultipleChoice={poll.isMultipleChoice}
+              />
             );
           })}
         </div>
+      </div>
 
-        {/* Voter Responses (Names & Choices) — Owner Only */}
-        {isOwner && poll.voteRecords && poll.voteRecords.length > 0 && (
-          <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-emerald-500" />
-                <span>Voter Responses ({poll.voteRecords.length}) — Owner View</span>
-              </h2>
-              <a
-                href={`/api/polls/${id}/export?adminKey=${adminKey}`}
-                download={`poll-${id}-results.csv`}
-                className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download CSV for Sheets</span>
-              </a>
-            </div>
+      {/* 5. Owner Controls (Authenticated creator only) */}
+      {isOwner && adminKey && (
+        <OwnerPanel poll={poll} adminKey={adminKey} />
+      )}
 
-            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-              <table className="w-full text-left text-xs">
-                <caption className="sr-only">Voter Responses and Choices Log</caption>
-                <thead className="bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800">
-                  <tr>
-                    <th scope="col" className="py-2.5 px-3 w-8">#</th>
-                    <th scope="col" className="py-2.5 px-3">Voter Name</th>
-                    <th scope="col" className="py-2.5 px-3">Selected Choice(s)</th>
-                    <th scope="col" className="py-2.5 px-3 text-right">Time</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
-                  {poll.voteRecords.map((rec, i) => (
-                    <tr
-                      key={rec.id}
-                      className="hover:bg-slate-50 dark:hover:bg-slate-800/40"
-                    >
-                      <td className="py-2.5 px-3 text-slate-400 font-medium">
-                        {i + 1}
-                      </td>
-                      <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">
-                        {rec.voterName}
-                      </td>
-                      <td className="py-2.5 px-3">
-                        {rec.optionIds
-                          .map(
-                            (optId) =>
-                              poll.options.find((o) => o.id === optId)?.text ||
-                              optId
-                          )
-                          .join(", ")}
-                      </td>
-                      <td className="py-2.5 px-3 text-right text-slate-400 whitespace-nowrap">
-                        {new Date(rec.createdAt).toLocaleTimeString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* Voter Privacy Message for Non-Owners */}
-        {!isOwner && (
-          <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-800 text-center">
-              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                🔒 Voter Privacy Protected
-              </p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Individual voter full names and Google Sheets CSV exports are private to the poll creator.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Action Footer */}
-        <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <Link
-            href={`/poll/${id}`}
-            className="text-xs sm:text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1.5"
-          >
-            <Vote className="w-4 h-4" />
-            <span>Go to Voting Screen</span>
-          </Link>
-
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs sm:text-sm font-bold hover:bg-slate-800 dark:hover:bg-white transition"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Create Another Poll</span>
-          </Link>
+      {/* 6. Voter Privacy Disclosure for non-owners */}
+      {!isOwner && (
+        <div className="p-4 rounded-[var(--radius-card)] bg-[var(--surface-muted)]/50 border border-[var(--border)] text-center text-xs text-[var(--text-muted)] space-y-1">
+          <p className="font-semibold text-[var(--text)]">
+            🔒 Private public results
+          </p>
+          <p>
+            People vote without registering. Individual names and responses are visible only to the poll creator.
+          </p>
         </div>
+      )}
+
+      {/* 7. Footer navigation */}
+      <div className="pt-4 flex items-center justify-between text-xs text-[var(--text-muted)]">
+        <Link
+          href={`/poll/${id}`}
+          className="hover:text-[var(--primary)] transition-colors inline-flex items-center gap-1 font-medium"
+        >
+          <Vote className="w-3.5 h-3.5" />
+          <span>Back to poll</span>
+        </Link>
+
+        <Link
+          href="/"
+          className="hover:text-[var(--primary)] transition-colors inline-flex items-center gap-1 font-medium"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Create a new poll</span>
+        </Link>
       </div>
     </div>
   );
@@ -545,9 +497,9 @@ export default function PollResultsPage(props: {
   return (
     <Suspense
       fallback={
-        <div className="max-w-xl mx-auto py-16 text-center">
-          <div className="w-10 h-10 border-4 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-500 font-medium">Loading live results...</p>
+        <div className="max-w-[1000px] mx-auto py-16 text-center">
+          <div className="w-8 h-8 border-3 border-[var(--primary)]/30 border-t-[var(--primary)] rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-[var(--text-muted)]">Loading live results...</p>
         </div>
       }
     >

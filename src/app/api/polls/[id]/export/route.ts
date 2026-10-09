@@ -1,6 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPoll } from "@/lib/db";
 
+function sanitizeFormula(val: string | number | undefined | null): string {
+  if (val === undefined || val === null) return "";
+  const str = String(val);
+  const trimmed = str.trimStart();
+  if (trimmed.startsWith("'")) {
+    return str;
+  }
+  if (
+    trimmed.startsWith("=") ||
+    trimmed.startsWith("+") ||
+    trimmed.startsWith("-") ||
+    trimmed.startsWith("@") ||
+    str.startsWith("\t") ||
+    str.startsWith("\r") ||
+    str.startsWith("\n")
+  ) {
+    return `'${str}`;
+  }
+  return str;
+}
+
 function escapeCsvCell(val: string | number | undefined | null): string {
   if (val === undefined || val === null) return '""';
   let str = String(val);
@@ -8,17 +29,7 @@ function escapeCsvCell(val: string | number | undefined | null): string {
   // Neutralize CSV Formula Injection (CWE-1236):
   // Spreadsheet engines (Excel, Google Sheets, Calc) execute formulas if a cell starts with =, +, -, @, \t, or \r
   // Prepending a single quote (') forces spreadsheet engines to interpret the content purely as plain text.
-  const trimmed = str.trimStart();
-  if (
-    trimmed.startsWith("=") ||
-    trimmed.startsWith("+") ||
-    trimmed.startsWith("-") ||
-    trimmed.startsWith("@") ||
-    trimmed.startsWith("\t") ||
-    trimmed.startsWith("\r")
-  ) {
-    str = `'${str}`;
-  }
+  str = sanitizeFormula(str);
 
   // Standard CSV escaping: double any embedded double quotes and wrap in quotes
   const escaped = str.replace(/"/g, '""');
@@ -48,107 +59,54 @@ export async function GET(
       );
     }
 
-    const isExpired = poll.expiresAt && new Date() > new Date(poll.expiresAt);
-    const totalVotes = poll.totalVotes || 0;
-
     const rows: string[] = [];
 
-    // Header info
-    rows.push(`${escapeCsvCell("Poll Question:")},${escapeCsvCell(poll.question)}`);
-    rows.push(`${escapeCsvCell("Poll ID:")},${escapeCsvCell(poll.id)}`);
-    rows.push(`${escapeCsvCell("Created At:")},${escapeCsvCell(poll.createdAt)}`);
-    rows.push(
-      `${escapeCsvCell("Expiration:")},${escapeCsvCell(
-        poll.expiresAt
-          ? `${new Date(poll.expiresAt).toLocaleString()} (${isExpired ? "Expired" : "Active"})`
-          : "No Limit"
-      )}`
-    );
-    rows.push(
-      `${escapeCsvCell("Poll Mode:")},${escapeCsvCell(
-        poll.isEliminationMode
-          ? `Elimination Mode (Max ${poll.maxPerOption || 1} per choice)`
-          : poll.isMultipleChoice
-          ? "Multiple Choice"
-          : "Single Choice"
-      )}`
-    );
-    if (poll.maxTotalVotes) {
-      rows.push(
-        `${escapeCsvCell("Vote Quota Limit:")},${escapeCsvCell(
-          `${poll.maxTotalVotes} maximum votes`
-        )}`
-      );
-    }
-    rows.push(`${escapeCsvCell("Total Votes Cast:")},${escapeCsvCell(totalVotes)}`);
-    rows.push(""); // empty separator
-
-    // Summary Section
-    rows.push(escapeCsvCell("--- SUMMARY OF CHOICES ---"));
+    // Header row: exactly the three required columns
     rows.push(
       [
-        escapeCsvCell("Option #"),
-        escapeCsvCell("Choice Text"),
-        escapeCsvCell("Votes Received"),
-        escapeCsvCell("Percentage"),
-        escapeCsvCell("Status"),
-        escapeCsvCell("Claimed By (Names)"),
+        escapeCsvCell("Selected Choice"),
+        escapeCsvCell("Voters (Names)"),
+        escapeCsvCell("Total Votes"),
       ].join(",")
     );
 
-    poll.options.forEach((opt, idx) => {
-      const percentage =
-        totalVotes > 0 ? `${Math.round((opt.votes / totalVotes) * 100)}%` : "0%";
-      const limit = opt.maxClaims || poll.maxPerOption || 1;
-      const status = opt.isEliminated || opt.votes >= limit ? "FULL / ELIMINATED" : "AVAILABLE";
-      const claimedNames = (opt.claimedBy || []).join("; ");
+    // One row per poll choice in original choice order
+    poll.options.forEach((opt) => {
+      // Find all voter names who selected this choice
+      let voters: string[] = [];
+      if (poll.voteRecords && poll.voteRecords.length > 0) {
+        voters = poll.voteRecords
+          .filter((rec) => rec.optionIds && rec.optionIds.includes(opt.id))
+          .map((rec) => rec.voterName);
+      }
+      if (voters.length === 0 && opt.claimedBy && opt.claimedBy.length > 0) {
+        voters = [...opt.claimedBy];
+      }
+
+      // Filter and clean voter names
+      const cleanVoters = voters
+        .filter((name) => typeof name === "string" && name.trim().length > 0)
+        .map((name) => name.trim());
+
+      // Group all voter names into the same cell, separated by commas.
+      // Neutralize formula injection on each voter name individually.
+      const sanitizedVoters = cleanVoters.map((name) => sanitizeFormula(name));
+      const votersCell = sanitizedVoters.join(", ");
+
+      // Calculate total number of votes for this choice
+      const totalVotes = Math.max(
+        cleanVoters.length,
+        typeof opt.votes === "number" ? opt.votes : 0
+      );
 
       rows.push(
         [
-          escapeCsvCell(idx + 1),
           escapeCsvCell(opt.text),
-          escapeCsvCell(opt.votes),
-          escapeCsvCell(percentage),
-          escapeCsvCell(status),
-          escapeCsvCell(claimedNames || "None"),
+          escapeCsvCell(votersCell),
+          escapeCsvCell(totalVotes),
         ].join(",")
       );
     });
-
-    rows.push(""); // empty separator
-
-    // Individual voter records
-    rows.push(escapeCsvCell("--- VOTER RESPONSES (FULL NAMES & CHOICES) ---"));
-    rows.push(
-      [
-        escapeCsvCell("#"),
-        escapeCsvCell("Voter Full Name"),
-        escapeCsvCell("Choice(s) Selected"),
-        escapeCsvCell("Date & Time"),
-      ].join(",")
-    );
-
-    if (poll.voteRecords && poll.voteRecords.length > 0) {
-      poll.voteRecords.forEach((record, index) => {
-        const optionNames = record.optionIds
-          .map((optId) => {
-            const opt = poll.options.find((o) => o.id === optId);
-            return opt ? opt.text : optId;
-          })
-          .join(" | ");
-
-        rows.push(
-          [
-            escapeCsvCell(index + 1),
-            escapeCsvCell(record.voterName),
-            escapeCsvCell(optionNames),
-            escapeCsvCell(new Date(record.createdAt).toLocaleString()),
-          ].join(",")
-        );
-      });
-    } else {
-      rows.push(`${escapeCsvCell("No votes recorded yet")},,,`);
-    }
 
     const csvContent = "\uFEFF" + rows.join("\r\n"); // UTF-8 BOM for Excel / Sheets compatibility
 
@@ -164,3 +122,4 @@ export async function GET(
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+

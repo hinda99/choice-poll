@@ -88,8 +88,8 @@ async function runFullAuditTests() {
   );
   const csvText = new TextDecoder("utf-8").decode(rawBuf);
 
-  // Check that dangerous triggers in cells are prefixed with '
-  assert(csvText.includes("\"'=SUM(1+1)\""), "Question starting with = is sanitized with leading single quote");
+  // Check CSV column headers and that dangerous triggers in cells are prefixed with '
+  assert(csvText.includes('"Selected Choice","Voters (Names)","Total Votes"'), "CSV header matches choice-based export columns");
   assert(csvText.includes("\"'=CMD|' /C calc'!A0\""), "Option starting with = is sanitized with leading single quote");
   assert(csvText.includes("\"'@SUM(A1:A10)\""), "Option starting with @ is sanitized with leading single quote");
   assert(csvText.includes("\"'+44712345678\""), "Option starting with + is sanitized with leading single quote");

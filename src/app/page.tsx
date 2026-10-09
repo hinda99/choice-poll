@@ -1,38 +1,48 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import {
-  Plus,
-  Trash2,
-  Sparkles,
-  CheckCircle2,
-  Lock,
-  Layers,
-  ArrowRight,
-  Flame,
-  Clock,
-  Users,
-  Sun,
-} from "lucide-react";
+import React, { useState, useRef } from "react";
+import { Plus, Trash2, ArrowRight, Layers } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { PageHeading } from "@/components/ui/page-heading";
+import { CapacitySlider } from "@/components/poll/capacity-slider";
+import { ShareDialog } from "@/components/poll/share-dialog";
 
 export default function CreatePollPage() {
-  const router = useRouter();
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState<string[]>(["", ""]);
   const [isMultipleChoice, setIsMultipleChoice] = useState(false);
   const [isEliminationMode, setIsEliminationMode] = useState(false);
-  const [maxPerOption, setMaxPerOption] = useState<number>(5);
+  const [maxPerOption, setMaxPerOption] = useState<number>(3);
+  const [hasMaxVotes, setHasMaxVotes] = useState(false);
+  const [maxTotalVotes, setMaxTotalVotes] = useState<number>(50);
   const [hasTimeLimit, setHasTimeLimit] = useState(false);
   const [timeLimitHours, setTimeLimitHours] = useState<number>(24);
-  const [hasMaxVotes, setHasMaxVotes] = useState(false);
-  const [maxTotalVotes, setMaxTotalVotes] = useState<number>(200);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{
+    question?: string;
+    options?: string;
+  }>({});
+
+  const [createdPollId, setCreatedPollId] = useState<string | null>(null);
+  const [createdAdminKey, setCreatedAdminKey] = useState<string | null>(null);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+
+  const questionInputRef = useRef<HTMLTextAreaElement>(null);
+  const choiceInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleAddOption = () => {
     if (options.length < 25) {
       setOptions([...options, ""]);
+      setTimeout(() => {
+        const nextIndex = options.length;
+        choiceInputRefs.current[nextIndex]?.focus();
+      }, 50);
     }
   };
 
@@ -46,16 +56,21 @@ export default function CreatePollPage() {
     const updated = [...options];
     updated[index] = value;
     setOptions(updated);
+    if (fieldErrors.options) {
+      setFieldErrors((prev) => ({ ...prev, options: undefined }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
+    const errors: { question?: string; options?: string } = {};
 
     const cleanQuestion = question.trim();
     if (!cleanQuestion) {
-      setErrorMessage("Please enter a question for your poll.");
-      return;
+      errors.question = "Please enter a question for your poll.";
+    } else if (cleanQuestion.length > 300) {
+      errors.question = "Question cannot exceed 300 characters.";
     }
 
     const cleanOptions = options
@@ -63,15 +78,22 @@ export default function CreatePollPage() {
       .filter((opt) => opt.length > 0);
 
     if (cleanOptions.length < 2) {
-      setErrorMessage("Please provide at least 2 non-empty options.");
+      errors.options = "Please provide at least 2 non-empty choices.";
+    } else if (cleanOptions.length > 25) {
+      errors.options = "You can add at most 25 choices.";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      if (errors.question) {
+        questionInputRef.current?.focus();
+      } else if (errors.options) {
+        choiceInputRefs.current[0]?.focus();
+      }
       return;
     }
 
-    if (cleanOptions.length > 25) {
-      setErrorMessage("You can add at most 25 options.");
-      return;
-    }
-
+    setFieldErrors({});
     setIsSubmitting(true);
 
     try {
@@ -95,7 +117,7 @@ export default function CreatePollPage() {
         throw new Error(data.error || "Failed to create poll.");
       }
 
-      // Store in localStorage that user is creator and save creatorKey
+      // Store creator flag and admin key in localStorage
       if (typeof window !== "undefined") {
         localStorage.setItem(`created_${data.poll.id}`, "true");
         if (data.creatorKey) {
@@ -103,412 +125,302 @@ export default function CreatePollPage() {
         }
       }
 
-      router.push(
-        data.creatorKey
-          ? `/poll/${data.poll.id}?adminKey=${data.creatorKey}`
-          : `/poll/${data.poll.id}`
-      );
+      setCreatedPollId(data.poll.id);
+      setCreatedAdminKey(data.creatorKey || null);
+      setIsShareDialogOpen(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Something went wrong.";
       setErrorMessage(msg);
+    } finally {
       setIsSubmitting(false);
     }
   };
 
+  const isMinChoices = options.length <= 2;
+  const isMaxChoices = options.length >= 25;
+
   return (
-    <div className="max-w-2xl mx-auto">
-      {/* Hero Header */}
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 text-xs font-semibold mb-3">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Instant Anonymous Polls</span>
-        </div>
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-          Create a New Poll
-        </h1>
-        <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mt-2">
-          Ask anything, customize voting rules, and share the link instantly.
-        </p>
-      </div>
+    <div className="space-y-8">
+      {/* Page Heading per Section 6.1 & 7 */}
+      <PageHeading
+        title="Create a poll"
+        subtitle="Ask a question, set the rules, and share instantly."
+      />
 
-      {/* Poll Creation Card */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none p-6 sm:p-8">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Question Input */}
-          <div>
-            <label
-              htmlFor="question"
-              className="block text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2"
-            >
-              Poll Question <span className="text-rose-500">*</span>
-            </label>
-            <input
-              id="question"
-              type="text"
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder="e.g. What should we order for lunch?"
-              className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-base"
-              maxLength={200}
-              required
-            />
-          </div>
-
-          {/* Options Section */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-semibold text-slate-900 dark:text-slate-100">
-                Answer Choices <span className="text-rose-500">*</span>
-              </label>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                {options.length}/25 choices
-              </span>
-            </div>
-
-            <div className="space-y-2.5">
-              {options.map((option, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">
-                    {idx + 1}
-                  </div>
-                  <input
-                    type="text"
-                    value={option}
-                    onChange={(e) => handleOptionChange(idx, e.target.value)}
-                    placeholder={`Choice ${idx + 1}`}
-                    className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm"
-                    maxLength={100}
-                    required
-                  />
-                  {options.length > 2 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveOption(idx)}
-                      className="p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition"
-                      title="Remove option"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {options.length < 25 && (
-              <button
-                type="button"
-                onClick={handleAddOption}
-                className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 rounded-xl border border-dashed border-indigo-300 dark:border-indigo-800/80 transition"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add Another Choice</span>
-              </button>
-            )}
-          </div>
-
-          <hr className="border-slate-200 dark:border-slate-800" />
-
-          {/* Voting Rules & Settings */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Layers className="w-4 h-4 text-indigo-500" />
-              <span>Poll Settings</span>
-            </h3>
-
-            {/* Multiple Choice Toggle */}
-            <label className="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/70 transition cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isMultipleChoice}
-                onChange={(e) => setIsMultipleChoice(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-700"
+      <form onSubmit={handleSubmit} noValidate>
+        {/* Desktop 2-column layout (720-760px main, 300-340px rules) */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] xl:grid-cols-[1fr_340px] gap-8 items-start">
+          {/* LEFT COLUMN: Question & Choices (Dominant area) */}
+          <div className="space-y-6">
+            <Card className="space-y-6 bg-[var(--surface)]">
+              {/* Question Field using reusable Textarea */}
+              <Textarea
+                ref={questionInputRef}
+                label="Your question"
+                value={question}
+                onChange={(e) => {
+                  setQuestion(e.target.value);
+                  if (fieldErrors.question) {
+                    setFieldErrors((prev) => ({ ...prev, question: undefined }));
+                  }
+                }}
+                maxLength={300}
+                showCounter={true}
+                placeholder="What should we decide?"
+                error={fieldErrors.question}
               />
-              <div className="flex-1">
-                <span className="text-sm font-semibold text-slate-900 dark:text-white block">
-                  Allow Multiple Choices
-                </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 block mt-0.5">
-                  Voters can check more than one answer option.
-                </span>
-              </div>
-            </label>
 
-            {/* Elimination / Single-Claim Mode Toggle (User's special request!) */}
-            <div className="p-4 rounded-xl border-2 border-amber-500/30 dark:border-amber-500/20 bg-amber-50/40 dark:bg-amber-950/20">
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isEliminationMode}
-                  onChange={(e) => setIsEliminationMode(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded text-amber-600 focus:ring-amber-500 border-slate-300 dark:border-slate-700"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                      Elimination / Single-Claim Mode
-                    </span>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white">
-                      <Flame className="w-2.5 h-2.5" /> First-Come
-                    </span>
-                  </div>
-                  <span className="text-xs text-slate-600 dark:text-slate-300 block mt-0.5">
-                    When a choice reaches its selection limit, it becomes{" "}
-                    <strong className="text-amber-700 dark:text-amber-400">
-                      disabled and eliminated
-                    </strong>{" "}
-                    for everyone else!
+              {/* Choices Field */}
+              <div className="space-y-3 pt-3 border-t border-[var(--border)]">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-semibold text-[var(--text)]">
+                    Answer choices
+                  </label>
+                  <span className="text-xs text-[var(--text-subtle)] font-mono tabular-nums">
+                    {options.length} / 25 choices
                   </span>
                 </div>
-              </label>
 
-              {/* Max votes per choice selector (Windows 11 Brightness Slider Style, 1 to 10 max) */}
-              {isEliminationMode && (
-                <div className="mt-4 pt-3.5 border-t border-amber-200/80 dark:border-amber-900/60 flex flex-col gap-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-900 dark:text-white block">
-                          Max votes allowed per choice (1 to 10):
+                <div className="space-y-2.5">
+                  {options.map((option, idx) => {
+                    const formattedIndex = String(idx + 1).padStart(2, "0");
+                    return (
+                      <div key={idx} className="flex items-center gap-2.5 group">
+                        {/* Numbered index 01, 02... */}
+                        <span className="w-7 text-center font-mono text-xs font-bold text-[var(--text-subtle)] select-none shrink-0">
+                          {formattedIndex}
                         </span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-100 dark:bg-cyan-950/80 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">
-                          {maxPerOption} {maxPerOption === 1 ? "person" : "people"} max
-                        </span>
-                      </div>
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
-                        {maxPerOption === 1
-                          ? "Strict single-claim: 1 person takes the choice, then it is eliminated."
-                          : `Up to ${maxPerOption} people can choose each option before it is eliminated.`}
-                      </span>
-                    </div>
-                  </div>
 
-                  {/* Windows 11 Action Center Brightness Slider */}
-                  <div className="p-3 sm:p-4 rounded-xl bg-slate-900/5 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 space-y-3">
-                    <div className="flex items-center gap-3">
-                      {/* Sun / Brightness Icon */}
-                      <div className="w-8 h-8 rounded-lg bg-cyan-500/10 dark:bg-cyan-500/20 flex items-center justify-center text-cyan-600 dark:text-cyan-400 shrink-0">
-                        <Sun className="w-4 h-4" />
-                      </div>
-
-                      {/* Slider Input Track */}
-                      <div className="relative flex-1 flex items-center">
+                        {/* Input */}
                         <input
-                          type="range"
-                          min={1}
-                          max={10}
-                          step={1}
-                          value={maxPerOption}
-                          onChange={(e) => setMaxPerOption(Number(e.target.value))}
-                          aria-label="Max votes allowed per choice"
-                          aria-valuemin={1}
-                          aria-valuemax={10}
-                          aria-valuenow={maxPerOption}
-                          className="win11-brightness-slider"
-                          style={{
-                            background: `linear-gradient(to right, #06b6d4 0%, #06b6d4 ${
-                              ((maxPerOption - 1) / 9) * 100
-                            }%, rgba(148, 163, 184, 0.25) ${
-                              ((maxPerOption - 1) / 9) * 100
-                            }%, rgba(148, 163, 184, 0.25) 100%)`,
+                          ref={(el) => {
+                            choiceInputRefs.current[idx] = el;
                           }}
+                          type="text"
+                          value={option}
+                          maxLength={150}
+                          onChange={(e) => handleOptionChange(idx, e.target.value)}
+                          placeholder={`Choice ${idx + 1}`}
+                          aria-label={`Choice ${idx + 1}`}
+                          className="flex-1 h-11 px-3.5 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-sm placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent transition-colors"
                         />
-                      </div>
 
-                      {/* Numeric Indicator */}
-                      <div className="min-w-14 text-right shrink-0">
-                        <span className="text-sm font-extrabold text-cyan-600 dark:text-cyan-400 font-mono">
-                          {maxPerOption}
-                        </span>
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium ml-1">
-                          / 10
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Step Marks (1 to 10) */}
-                    <div className="flex items-center justify-between px-1 sm:px-2 text-[11px] text-slate-400 dark:text-slate-500 select-none">
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                        {/* Remove button with boundary disabled state & accessible label */}
                         <button
-                          key={num}
                           type="button"
-                          onClick={() => setMaxPerOption(num)}
-                          className={`hover:text-cyan-500 transition cursor-pointer flex flex-col items-center gap-1 py-0.5 px-1 rounded-md ${
-                            maxPerOption === num
-                              ? "text-cyan-600 dark:text-cyan-400 font-bold scale-110"
-                              : "hover:bg-slate-100 dark:hover:bg-slate-800/60"
+                          disabled={isMinChoices}
+                          onClick={() => handleRemoveOption(idx)}
+                          aria-label={
+                            isMinChoices
+                              ? "At least 2 choices required"
+                              : `Remove choice ${idx + 1}`
+                          }
+                          title={
+                            isMinChoices
+                              ? "At least 2 choices required"
+                              : `Remove choice ${idx + 1}`
+                          }
+                          className={`p-2.5 rounded-lg transition-colors focus-ring ${
+                            isMinChoices
+                              ? "text-[var(--text-subtle)]/40 cursor-not-allowed"
+                              : "text-[var(--text-subtle)] hover:text-[var(--danger)] hover:bg-[var(--danger-soft)] cursor-pointer"
                           }`}
                         >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full transition ${
-                              maxPerOption === num
-                                ? "bg-cyan-500 scale-125 shadow-sm shadow-cyan-500/50"
-                                : "bg-slate-300 dark:bg-slate-700"
-                            }`}
-                          />
-                          <span className="font-mono text-[10px] sm:text-xs">{num}</span>
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Validation error for choices */}
+                {fieldErrors.options && (
+                  <InlineAlert variant="danger">
+                    {fieldErrors.options}
+                  </InlineAlert>
+                )}
+
+                {/* Clear boundary feedback for minimum choices */}
+                {isMinChoices && (
+                  <p className="text-[11px] text-[var(--text-subtle)]">
+                    Polls require a minimum of 2 choices.
+                  </p>
+                )}
+
+                {/* Add choice button / Maximum boundary feedback */}
+                {!isMaxChoices ? (
+                  <button
+                    type="button"
+                    onClick={handleAddOption}
+                    className="w-full mt-2 h-11 rounded-[var(--radius-control)] border border-dashed border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]/50 text-[var(--text-muted)] hover:text-[var(--primary)] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer focus-ring"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>+ Add choice</span>
+                  </button>
+                ) : (
+                  <div className="p-3 rounded-[var(--radius-control)] bg-[var(--surface-muted)] border border-[var(--border)] text-center text-xs text-[var(--text-muted)] font-medium">
+                    Maximum limit of 25 choices reached.
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            {/* Error message from API */}
+            {errorMessage && (
+              <InlineAlert variant="danger">
+                {errorMessage}
+              </InlineAlert>
+            )}
+
+            {/* Dominant Primary Action CTA */}
+            <div className="pt-2 flex justify-end">
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                isLoading={isSubmitting}
+                className="w-full sm:w-auto px-8 font-semibold text-base shadow-xs"
+              >
+                <span>Create poll & share</span>
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: Poll Rules (Narrower column) */}
+          <div className="space-y-4">
+            <Card className="space-y-4 bg-[var(--surface)]">
+              <div className="flex items-center gap-2 pb-2 border-b border-[var(--border)]">
+                <Layers className="w-4 h-4 text-[var(--primary)]" />
+                <h2 className="text-sm font-bold text-[var(--text)] tracking-tight">
+                  Poll rules
+                </h2>
+              </div>
+
+              {/* Rule 1: Allow multiple selections */}
+              <Switch
+                checked={isMultipleChoice}
+                onChange={setIsMultipleChoice}
+                label="Allow multiple selections"
+                description="Voters can select more than one answer option."
+              />
+
+              {/* Rule 2: Limit votes per choice (Elimination mode) */}
+              <div className="space-y-3">
+                <Switch
+                  checked={isEliminationMode}
+                  onChange={setIsEliminationMode}
+                  label="Limit votes per choice"
+                  description="Choices become disabled when their spot limit is reached."
+                />
+
+                {isEliminationMode && (
+                  <CapacitySlider
+                    value={maxPerOption}
+                    onChange={setMaxPerOption}
+                  />
+                )}
+              </div>
+
+              {/* Rule 3: Set total vote limit */}
+              <div className="space-y-3">
+                <Switch
+                  checked={hasMaxVotes}
+                  onChange={setHasMaxVotes}
+                  label="Set total vote limit"
+                  description="Poll closes automatically after accepted submissions."
+                />
+
+                {hasMaxVotes && (
+                  <div className="p-3.5 rounded-[var(--radius-control)] bg-[var(--surface-muted)] border border-[var(--border)] space-y-3">
+                    <div className="flex items-center justify-between text-xs font-semibold text-[var(--text)]">
+                      <span>Poll closes after:</span>
+                      <span className="font-mono tabular-nums text-sm font-bold text-[var(--primary)]">
+                        {maxTotalVotes} submissions
+                      </span>
+                    </div>
+
+                    {/* Presets */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {[10, 25, 50, 100, 150, 200].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setMaxTotalVotes(preset)}
+                          className={`px-2.5 py-1 text-xs font-mono font-semibold rounded-md border transition-colors cursor-pointer ${
+                            maxTotalVotes === preset
+                              ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-xs"
+                              : "bg-[var(--surface)] text-[var(--text)] border-[var(--border)] hover:bg-[var(--surface-muted)]"
+                          }`}
+                        >
+                          {preset}
                         </button>
                       ))}
                     </div>
+
+                    <p className="text-[11px] text-[var(--text-muted)] pt-1 border-t border-[var(--border)]">
+                      Poll closes after {maxTotalVotes} accepted voter submissions.
+                    </p>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
 
-            {/* Total Vote Limit (Cap up to 200 votes) */}
-            <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={hasMaxVotes}
-                  onChange={(e) => setHasMaxVotes(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-700"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                      Poll-wide Total Votes Cap (Up to 200 Votes)
-                    </span>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                      <Users className="w-2.5 h-2.5" /> Max 200
-                    </span>
-                  </div>
-                  <span className="text-xs text-slate-500 dark:text-slate-400 block mt-0.5">
-                    Automatically close and lock the poll once the total votes reach this limit.
-                  </span>
-                </div>
-              </label>
-
-              {hasMaxVotes && (
-                <div className="mt-4 pt-3.5 border-t border-slate-200 dark:border-slate-700/80 flex flex-col gap-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <span className="text-xs font-bold text-slate-900 dark:text-white block">
-                        Close after total votes:
-                      </span>
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                        The poll will automatically lock when {maxTotalVotes} votes have been cast.
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min={1}
-                        max={200}
-                        value={maxTotalVotes}
-                        onChange={(e) =>
-                          setMaxTotalVotes(
-                            Math.min(200, Math.max(1, Number(e.target.value) || 1))
-                          )
-                        }
-                        className="w-20 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-center"
-                      />
-                      <span className="text-xs text-slate-500">votes</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {[10, 25, 50, 100, 150, 200].map((count) => (
-                      <button
-                        key={count}
-                        type="button"
-                        onClick={() => setMaxTotalVotes(count)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                          maxTotalVotes === count
-                            ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30 scale-105"
-                            : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-indigo-400"
-                        }`}
-                      >
-                        {count}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Time Limit Setting (Up to 24h) */}
-            <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
+              {/* Rule 4: Set voting time limit */}
+              <div className="space-y-3">
+                <Switch
                   checked={hasTimeLimit}
-                  onChange={(e) => setHasTimeLimit(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-700"
+                  onChange={setHasTimeLimit}
+                  label="Set voting time limit"
+                  description="Voting closes automatically when the timer expires."
                 />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                      Voting Time Limit (Up to 24 Hours)
-                    </span>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                      <Clock className="w-2.5 h-2.5" /> Max 24h
-                    </span>
-                  </div>
-                  <span className="text-xs text-slate-500 dark:text-slate-400 block mt-0.5">
-                    Automatically close the poll and end voting after a set duration.
-                  </span>
-                </div>
-              </label>
 
-              {hasTimeLimit && (
-                <div className="mt-4 pt-3.5 border-t border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <span className="text-xs font-bold text-slate-900 dark:text-white block">
-                      Close poll after:
-                    </span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Voting will be locked after {timeLimitHours} hour{timeLimitHours === 1 ? "" : "s"}.
-                    </span>
-                  </div>
+                {hasTimeLimit && (
+                  <div className="p-3.5 rounded-[var(--radius-control)] bg-[var(--surface-muted)] border border-[var(--border)] space-y-3">
+                    <div className="flex items-center justify-between text-xs font-semibold text-[var(--text)]">
+                      <span>Voting duration:</span>
+                      <span className="font-mono tabular-nums text-sm font-bold text-[var(--primary)]">
+                        {timeLimitHours}h
+                      </span>
+                    </div>
 
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {[1, 2, 4, 8, 12, 24].map((hrs) => (
-                      <button
-                        key={hrs}
-                        type="button"
-                        onClick={() => setTimeLimitHours(hrs)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                          timeLimitHours === hrs
-                            ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30 scale-105"
-                            : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-indigo-400"
-                        }`}
-                      >
-                        {hrs}h
-                      </button>
-                    ))}
+                    {/* Presets */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {[1, 2, 4, 8, 12, 24].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setTimeLimitHours(preset)}
+                          className={`px-2.5 py-1 text-xs font-mono font-semibold rounded-md border transition-colors cursor-pointer ${
+                            timeLimitHours === preset
+                              ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-xs"
+                              : "bg-[var(--surface)] text-[var(--text)] border-[var(--border)] hover:bg-[var(--surface-muted)]"
+                          }`}
+                        >
+                          {preset}h
+                        </button>
+                      ))}
+                    </div>
+
+                    <p className="text-[11px] text-[var(--text-muted)] pt-1 border-t border-[var(--border)]">
+                      Voting closes automatically {timeLimitHours} hours after creation.
+                    </p>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            </Card>
           </div>
+        </div>
+      </form>
 
-          {errorMessage && (
-            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm">
-              {errorMessage}
-            </div>
-          )}
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full py-3.5 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 text-base"
-          >
-            {isSubmitting ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>Creating Poll...</span>
-              </>
-            ) : (
-              <>
-                <span>Create Poll & Share Link</span>
-                <ArrowRight className="w-5 h-5" />
-              </>
-            )}
-          </button>
-        </form>
-      </div>
+      {/* Share Dialog on Creation */}
+      {createdPollId && (
+        <ShareDialog
+          isOpen={isShareDialogOpen}
+          onClose={() => setIsShareDialogOpen(false)}
+          pollId={createdPollId}
+          creatorKey={createdAdminKey || undefined}
+        />
+      )}
     </div>
   );
 }

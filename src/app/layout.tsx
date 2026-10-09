@@ -2,14 +2,31 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import { ToastProvider } from "@/components/ui/toast";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Choice — Instant Anonymous Online Polls",
+  title: "choice. — Account-free, real-time polling",
   description:
-    "Create and share instant anonymous polls with real-time results and first-come single-claim elimination mode.",
+    "Fast, private online polling with live results, per-choice capacity, and owner response logs.",
 };
+
+const themeScript = `
+  (function() {
+    try {
+      var theme = localStorage.getItem('choice-theme');
+      var isDark = theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+        document.documentElement.setAttribute('data-theme', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    } catch (e) {}
+  })();
+`;
 
 export default function RootLayout({
   children,
@@ -17,18 +34,32 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className="h-full" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body
-        className={`${inter.className} min-h-full flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased`}
+        className={`${inter.className} min-h-full flex flex-col bg-[var(--background)] text-[var(--text)] antialiased transition-colors`}
       >
         <Navbar />
-        <main className="flex-1 py-8 px-4 sm:px-6">{children}</main>
-        <footer className="border-t border-slate-200 dark:border-slate-800/80 py-6 text-center text-xs text-slate-500 dark:text-slate-400">
-          <div className="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <p>Built with Next.js, Tailwind CSS & Real-Time Sync</p>
-            <p className="flex items-center gap-1">
-              <span>Zero sign-up required • 100% Anonymous</span>
-            </p>
+
+        <ToastProvider>
+          <main className="flex-1 max-w-[1120px] w-full mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-10">
+            {children}
+          </main>
+        </ToastProvider>
+
+        <footer className="border-t border-[var(--border)] py-6 text-xs text-[var(--text-muted)] bg-[var(--surface)] transition-colors">
+          <div className="max-w-[1120px] mx-auto px-4 sm:px-6 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+            <div>
+              <span className="font-semibold text-[var(--text)]">choice.</span>{" "}
+              <span>— No accounts. Fast voting. Private public results.</span>
+            </div>
+            <div className="flex items-center gap-4 text-[var(--text-subtle)]">
+              <span>Only poll creators see voter names</span>
+              <span>•</span>
+              <span>Real-time SSE sync</span>
+            </div>
           </div>
         </footer>
       </body>
