@@ -94,12 +94,19 @@ export default function CreatePollPage() {
         throw new Error(data.error || "Failed to create poll.");
       }
 
-      // Store in localStorage that user is creator
+      // Store in localStorage that user is creator and save creatorKey
       if (typeof window !== "undefined") {
         localStorage.setItem(`created_${data.poll.id}`, "true");
+        if (data.creatorKey) {
+          localStorage.setItem(`poll_admin_${data.poll.id}`, data.creatorKey);
+        }
       }
 
-      router.push(`/poll/${data.poll.id}`);
+      router.push(
+        data.creatorKey
+          ? `/poll/${data.poll.id}?adminKey=${data.creatorKey}`
+          : `/poll/${data.poll.id}`
+      );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Something went wrong.";
       setErrorMessage(msg);

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getPoll, pollEvents } from "@/lib/db";
+import { getPoll, pollEvents, sanitizePollForPublic } from "@/lib/db";
 import { Poll } from "@/lib/types";
 
 export async function GET(
@@ -7,18 +7,24 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   const { id } = await context.params;
+  const adminKey = request.nextUrl.searchParams.get("adminKey");
   const initialPoll = await getPoll(id);
 
   if (!initialPoll) {
     return new Response("Poll not found", { status: 404 });
   }
 
+  const isOwner = Boolean(
+    initialPoll.creatorKey && adminKey && initialPoll.creatorKey === adminKey
+  );
+
   const responseStream = new TransformStream();
   const writer = responseStream.writable.getWriter();
   const encoder = new TextEncoder();
 
-  // Send initial data
-  writer.write(encoder.encode(`data: ${JSON.stringify(initialPoll)}\n\n`));
+  // Send initial data (sanitized if regular voter, full if owner)
+  const initialPayload = isOwner ? initialPoll : sanitizePollForPublic(initialPoll);
+  writer.write(encoder.encode(`data: ${JSON.stringify(initialPayload)}\n\n`));
 
   let isClosed = false;
   const cleanup = () => {
@@ -36,7 +42,8 @@ export async function GET(
   const handleUpdate = async (updatedPoll: Poll) => {
     if (isClosed) return;
     try {
-      await writer.write(encoder.encode(`data: ${JSON.stringify(updatedPoll)}\n\n`));
+      const payload = isOwner ? updatedPoll : sanitizePollForPublic(updatedPoll);
+      await writer.write(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
     } catch {
       cleanup();
     }

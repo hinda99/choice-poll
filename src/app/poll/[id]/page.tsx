@@ -37,6 +37,25 @@ function PollVoteContent({
   const [timeLeft, setTimeLeft] = useState<string>("");
   const [isExpired, setIsExpired] = useState<boolean>(false);
 
+  const [adminKey, setAdminKey] = useState<string>("");
+  const [isOwner, setIsOwner] = useState<boolean>(false);
+
+  // Check localStorage and URL query for owner adminKey
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const keyFromUrl = urlParams.get("adminKey");
+      const keyFromStorage = localStorage.getItem(`poll_admin_${id}`);
+      const effectiveKey = keyFromUrl || keyFromStorage || "";
+      if (effectiveKey) {
+        setAdminKey(effectiveKey);
+        if (keyFromUrl && !keyFromStorage) {
+          localStorage.setItem(`poll_admin_${id}`, keyFromUrl);
+        }
+      }
+    }
+  }, [id]);
+
   // Check localStorage for duplicate voting
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -78,9 +97,27 @@ function PollVoteContent({
   // Initial fetch + real-time updates (via SSE & fallback polling)
   useEffect(() => {
     let isMounted = true;
+    const urlParams =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search)
+        : null;
+    const effectiveKey =
+      adminKey ||
+      urlParams?.get("adminKey") ||
+      (typeof window !== "undefined"
+        ? localStorage.getItem(`poll_admin_${id}`)
+        : "") ||
+      "";
+
+    const fetchUrl = effectiveKey
+      ? `/api/polls/${id}?adminKey=${effectiveKey}`
+      : `/api/polls/${id}`;
+    const streamUrl = effectiveKey
+      ? `/api/polls/${id}/stream?adminKey=${effectiveKey}`
+      : `/api/polls/${id}/stream`;
 
     // 1. Fetch initial poll
-    fetch(`/api/polls/${id}`)
+    fetch(fetchUrl)
       .then((res) => {
         if (!res.ok) throw new Error("Poll not found.");
         return res.json();
@@ -88,6 +125,7 @@ function PollVoteContent({
       .then((data) => {
         if (isMounted) {
           setPoll(data.poll);
+          if (data.isOwner) setIsOwner(true);
           setLoading(false);
         }
       })
@@ -101,45 +139,43 @@ function PollVoteContent({
     // 2. Real-time updates via EventSource (SSE)
     let eventSource: EventSource | null = null;
     try {
-      eventSource = new EventSource(`/api/polls/${id}/stream`);
+      eventSource = new EventSource(streamUrl);
       eventSource.onmessage = (event) => {
         if (event.data && isMounted) {
           try {
             const updatedPoll = JSON.parse(event.data);
             setPoll(updatedPoll);
           } catch {
-            // ignore non-json keepalive comments
+            // ignore keepalive
           }
         }
-      };
-      eventSource.onerror = () => {
-        // Fallback polling if SSE is not available
       };
     } catch {
       // SSE not supported
     }
 
-    // 3. Fallback polling every 3 seconds to guarantee real-time updates
+    // 3. Fallback polling
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`/api/polls/${id}`);
+        const res = await fetch(fetchUrl);
         if (res.ok) {
           const data = await res.json();
           if (isMounted) {
             setPoll(data.poll);
+            if (data.isOwner) setIsOwner(true);
           }
         }
       } catch {
-        // ignore network hiccups
+        // ignore
       }
-    }, 3000);
+    }, 4000);
 
     return () => {
       isMounted = false;
       if (eventSource) eventSource.close();
       clearInterval(interval);
     };
-  }, [id]);
+  }, [id, adminKey]);
 
   const handleToggleOption = (optionId: string, isEliminated: boolean) => {
     if (isEliminated) return;
@@ -207,7 +243,8 @@ function PollVoteContent({
 
   const handleCopyLink = () => {
     if (typeof window !== "undefined") {
-      navigator.clipboard.writeText(window.location.href);
+      const publicUrl = `${window.location.origin}/poll/${id}`;
+      navigator.clipboard.writeText(publicUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -295,16 +332,43 @@ function PollVoteContent({
           {copied ? (
             <>
               <Check className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="text-emerald-600">Link Copied!</span>
+              <span className="text-emerald-600">Voter Link Copied!</span>
             </>
           ) : (
             <>
               <Share2 className="w-3.5 h-3.5" />
-              <span>Share Poll</span>
+              <span>Share Voter Link</span>
             </>
           )}
         </button>
       </div>
+
+      {/* Owner Notice Banner */}
+      {isOwner && (
+        <div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-base shrink-0 shadow-sm">
+              👑
+            </div>
+            <div>
+              <p className="text-xs font-bold text-amber-950 dark:text-amber-200">
+                Poll Creator (Owner View)
+              </p>
+              <p className="text-[11px] text-amber-800 dark:text-amber-400">
+                Voters only see answer options and live percentages. You have access to voter response logs and sheets export.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/poll/${id}/results${adminKey ? `?adminKey=${adminKey}` : ""}`}
+              className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs whitespace-nowrap transition shadow-sm"
+            >
+              Owner Results & Log &rarr;
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Expired Poll Banner */}
       {isExpired && (
@@ -487,8 +551,8 @@ function PollVoteContent({
                     >
                       {option.text}
                     </span>
-                    {poll.isEliminationMode && option.claimedBy && option.claimedBy.length > 0 && (
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5 font-normal">
+                    {isOwner && poll.isEliminationMode && option.claimedBy && option.claimedBy.length > 0 && (
+                      <span className="text-[11px] text-amber-700 dark:text-amber-400 block mt-0.5 font-normal">
                         Claimed by: {option.claimedBy.join(", ")}
                       </span>
                     )}

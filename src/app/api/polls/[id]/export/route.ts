@@ -26,15 +26,26 @@ function escapeCsvCell(val: string | number | undefined | null): string {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await context.params;
+    const adminKey =
+      request.nextUrl.searchParams.get("adminKey") ||
+      request.headers.get("x-admin-key");
+
     const poll = await getPoll(id);
 
     if (!poll) {
       return NextResponse.json({ error: "Poll not found." }, { status: 404 });
+    }
+
+    if (poll.creatorKey && (!adminKey || poll.creatorKey !== adminKey)) {
+      return NextResponse.json(
+        { error: "Access denied. Only the poll owner can export voter response logs." },
+        { status: 403 }
+      );
     }
 
     const isExpired = poll.expiresAt && new Date() > new Date(poll.expiresAt);

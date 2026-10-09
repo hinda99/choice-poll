@@ -65,9 +65,21 @@ async function runFullAuditTests() {
     assert(vRes.status === 200, `Recorded vote for '${voter.name}'`);
   }
 
-  // Fetch CSV export and verify sanitization
-  const exportRes = await fetch(`${baseUrl}/api/polls/${formulaPollData.poll.id}/export`);
-  assert(exportRes.status === 200, "Fetched CSV export");
+  // Verify unauthorized voter cannot export CSV (403 Forbidden)
+  const unauthExportRes = await fetch(`${baseUrl}/api/polls/${formulaPollData.poll.id}/export`);
+  assert(unauthExportRes.status === 403, "Blocked unauthorized voter from exporting CSV (HTTP 403)");
+
+  // Verify regular voter API response hides private voteRecords
+  const publicPollRes = await fetch(`${baseUrl}/api/polls/${formulaPollData.poll.id}`);
+  const publicPollData = await publicPollRes.json();
+  assert(publicPollData.isOwner === false, "Public poll response indicates isOwner: false");
+  assert(!publicPollData.poll.voteRecords, "Public poll response omits private voteRecords");
+
+  // Fetch CSV export as authorized poll owner
+  const exportRes = await fetch(
+    `${baseUrl}/api/polls/${formulaPollData.poll.id}/export?adminKey=${formulaPollData.creatorKey}`
+  );
+  assert(exportRes.status === 200, "Fetched CSV export as authorized poll owner (HTTP 200)");
   const rawBuf = await exportRes.arrayBuffer();
   const rawBytes = new Uint8Array(rawBuf);
   assert(
@@ -207,14 +219,19 @@ async function runFullAuditTests() {
   assert(successes.length === 3, `Strictly 3 votes succeeded (got ${successes.length})`);
   assert(rejections.length === 9, `Strictly 9 votes rejected (got ${rejections.length})`);
 
-  // Verify final poll state from fresh server fetch
+  // Verify public voter fetch hides claimedBy names
   const finalPollRes = await fetch(`${baseUrl}/api/polls/${racePollId}`);
   const finalPollData = await finalPollRes.json();
   const vipOpt = finalPollData.poll.options.find((o) => o.id === "opt-1");
-
   assert(vipOpt.votes === 3, `Option 1 final votes exactly 3 (got ${vipOpt.votes})`);
   assert(vipOpt.isEliminated === true, "Option 1 is flagged as eliminated");
-  assert(vipOpt.claimedBy.length === 3, "Option 1 has exactly 3 claimedBy entries");
+  assert(vipOpt.claimedBy === undefined, "Public voter view hides claimedBy voter names");
+
+  // Verify owner fetch shows claimedBy names
+  const ownerPollRes = await fetch(`${baseUrl}/api/polls/${racePollId}?adminKey=${racePollData.creatorKey}`);
+  const ownerPollData = await ownerPollRes.json();
+  const ownerVipOpt = ownerPollData.poll.options.find((o) => o.id === "opt-1");
+  assert(ownerVipOpt.claimedBy.length === 3, "Owner view reveals all 3 claimedBy entries");
 
   // ----------------------------------------------------
   // TEST 4: Poll-Wide Quota Lock Under Concurrent Load

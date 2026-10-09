@@ -66,7 +66,9 @@ async function testNewFeatures() {
 
   // 6. Test Export to Sheets / CSV endpoint
   console.log("\nTesting Export to Sheets endpoint: /api/polls/[id]/export...");
-  const exportRes = await fetch(`${baseUrl}/api/polls/${poll.id}/export`);
+  const exportRes = await fetch(
+    `${baseUrl}/api/polls/${poll.id}/export?adminKey=${createData.creatorKey}`
+  );
   console.log(`Export Status: ${exportRes.status}`);
   console.log(`Content-Type: ${exportRes.headers.get("content-type")}`);
   console.log(`Content-Disposition: ${exportRes.headers.get("content-disposition")}`);

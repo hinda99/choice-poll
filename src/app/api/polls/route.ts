@@ -45,7 +45,10 @@ export async function POST(request: NextRequest) {
       timeLimitHours: timeLimitHours ? Number(timeLimitHours) : undefined,
     });
 
-    return NextResponse.json({ success: true, poll }, { status: 201 });
+    return NextResponse.json(
+      { success: true, poll, creatorKey: poll.creatorKey },
+      { status: 201 }
+    );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to create poll.";
     return NextResponse.json({ error: message }, { status: 400 });

@@ -36,9 +36,23 @@ function PollResultsContent({
   const [timeLeft, setTimeLeft] = useState<string>("");
   const [isExpired, setIsExpired] = useState<boolean>(false);
 
+  const [adminKey, setAdminKey] = useState<string>("");
+  const [isOwner, setIsOwner] = useState<boolean>(false);
+  const [adminCopied, setAdminCopied] = useState(false);
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       setHasVoted(Boolean(localStorage.getItem(`voted_${id}`)));
+      const urlParams = new URLSearchParams(window.location.search);
+      const keyFromUrl = urlParams.get("adminKey");
+      const keyFromStorage = localStorage.getItem(`poll_admin_${id}`);
+      const effectiveKey = keyFromUrl || keyFromStorage || "";
+      if (effectiveKey) {
+        setAdminKey(effectiveKey);
+        if (keyFromUrl && !keyFromStorage) {
+          localStorage.setItem(`poll_admin_${id}`, keyFromUrl);
+        }
+      }
     }
   }, [id]);
 
@@ -71,9 +85,27 @@ function PollResultsContent({
 
   useEffect(() => {
     let isMounted = true;
+    const urlParams =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search)
+        : null;
+    const effectiveKey =
+      adminKey ||
+      urlParams?.get("adminKey") ||
+      (typeof window !== "undefined"
+        ? localStorage.getItem(`poll_admin_${id}`)
+        : "") ||
+      "";
+
+    const fetchUrl = effectiveKey
+      ? `/api/polls/${id}?adminKey=${effectiveKey}`
+      : `/api/polls/${id}`;
+    const streamUrl = effectiveKey
+      ? `/api/polls/${id}/stream?adminKey=${effectiveKey}`
+      : `/api/polls/${id}/stream`;
 
     // 1. Initial fetch
-    fetch(`/api/polls/${id}`)
+    fetch(fetchUrl)
       .then((res) => {
         if (!res.ok) throw new Error("Poll not found.");
         return res.json();
@@ -81,6 +113,7 @@ function PollResultsContent({
       .then((data) => {
         if (isMounted) {
           setPoll(data.poll);
+          if (data.isOwner) setIsOwner(true);
           setLoading(false);
           setLastUpdated(new Date());
         }
@@ -95,7 +128,7 @@ function PollResultsContent({
     // 2. Real-time updates via EventSource (SSE)
     let eventSource: EventSource | null = null;
     try {
-      eventSource = new EventSource(`/api/polls/${id}/stream`);
+      eventSource = new EventSource(streamUrl);
       eventSource.onmessage = (event) => {
         if (event.data && isMounted) {
           try {
@@ -111,28 +144,29 @@ function PollResultsContent({
       // SSE not supported
     }
 
-    // 3. Periodic fallback poll every 2.5s for seamless sync
+    // 3. Periodic fallback poll
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`/api/polls/${id}`);
+        const res = await fetch(fetchUrl);
         if (res.ok) {
           const data = await res.json();
           if (isMounted) {
             setPoll(data.poll);
+            if (data.isOwner) setIsOwner(true);
             setLastUpdated(new Date());
           }
         }
       } catch {
         // ignore
       }
-    }, 2500);
+    }, 3500);
 
     return () => {
       isMounted = false;
       if (eventSource) eventSource.close();
       clearInterval(interval);
     };
-  }, [id]);
+  }, [id, adminKey]);
 
   const handleCopyLink = () => {
     if (typeof window !== "undefined") {
@@ -140,6 +174,15 @@ function PollResultsContent({
       navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleCopyAdminLink = () => {
+    if (typeof window !== "undefined") {
+      const adminUrl = `${window.location.origin}/poll/${id}/results?adminKey=${adminKey}`;
+      navigator.clipboard.writeText(adminUrl);
+      setAdminCopied(true);
+      setTimeout(() => setAdminCopied(false), 2000);
     }
   };
 
@@ -227,16 +270,18 @@ function PollResultsContent({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Export to Sheets Button */}
-          <a
-            href={`/api/polls/${id}/export`}
-            download={`poll-${id}-results.csv`}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition shadow-sm shadow-emerald-600/20"
-            title="Download CSV for Google Sheets / Excel"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Export to Sheets</span>
-          </a>
+          {/* Export to Sheets Button (Owner Only) */}
+          {isOwner && (
+            <a
+              href={`/api/polls/${id}/export?adminKey=${adminKey}`}
+              download={`poll-${id}-results.csv`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition shadow-sm shadow-emerald-600/20"
+              title="Download CSV for Google Sheets / Excel (Owner Only)"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Export to Sheets</span>
+            </a>
+          )}
 
           {!hasVoted && !isExpired && (
             <Link
@@ -255,17 +300,51 @@ function PollResultsContent({
             {copied ? (
               <>
                 <Check className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="text-emerald-600">Link Copied!</span>
+                <span className="text-emerald-600">Voter Link Copied!</span>
               </>
             ) : (
               <>
                 <Share2 className="w-3.5 h-3.5" />
-                <span>Share Link</span>
+                <span>Share Voter Link</span>
               </>
             )}
           </button>
         </div>
       </div>
+
+      {/* Owner Badge & Controls Banner */}
+      {isOwner && (
+        <div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-base shrink-0 shadow-sm">
+              👑
+            </div>
+            <div>
+              <p className="text-xs font-bold text-amber-950 dark:text-amber-200">
+                Poll Creator Dashboard
+              </p>
+              <p className="text-[11px] text-amber-800 dark:text-amber-400">
+                You have exclusive access to individual voter responses and Google Sheets CSV export.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCopyLink}
+              className="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold hover:border-indigo-400 transition shadow-sm"
+            >
+              📋 {copied ? "Voter Link Copied!" : "Copy Voter Link"}
+            </button>
+            <button
+              onClick={handleCopyAdminLink}
+              className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 transition shadow-sm"
+              title="Save this private admin link to manage this poll from any device"
+            >
+              🔑 {adminCopied ? "Admin Link Copied!" : "Save Admin Link"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Results Card */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none p-6 sm:p-8">
@@ -362,16 +441,16 @@ function PollResultsContent({
           })}
         </div>
 
-        {/* Voter Responses (Names & Choices) */}
-        {poll.voteRecords && poll.voteRecords.length > 0 && (
+        {/* Voter Responses (Names & Choices) — Owner Only */}
+        {isOwner && poll.voteRecords && poll.voteRecords.length > 0 && (
           <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <UserCheck className="w-4 h-4 text-emerald-500" />
-                <span>Voter Responses ({poll.voteRecords.length})</span>
+                <span>Voter Responses ({poll.voteRecords.length}) — Owner View</span>
               </h2>
               <a
-                href={`/api/polls/${id}/export`}
+                href={`/api/polls/${id}/export?adminKey=${adminKey}`}
                 download={`poll-${id}-results.csv`}
                 className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
               >
@@ -419,6 +498,20 @@ function PollResultsContent({
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Voter Privacy Message for Non-Owners */}
+        {!isOwner && (
+          <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-800 text-center">
+              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                🔒 Voter Privacy Protected
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Individual voter full names and Google Sheets CSV exports are private to the poll creator.
+              </p>
             </div>
           </div>
         )}

@@ -17,6 +17,7 @@ export interface PollOption {
 
 export interface Poll {
   id: string;
+  creatorKey?: string; // Private key known only to the poll creator/owner
   question: string;
   isMultipleChoice: boolean;
   isEliminationMode: boolean; // When enabled, option is eliminated once reaching max claims

@@ -151,8 +151,11 @@ export async function createPoll(input: CreatePollInput): Promise<Poll> {
     ? new Date(Date.now() + timeLimitHours * 60 * 60 * 1000).toISOString()
     : undefined;
 
+  const creatorKey = generateId(14);
+
   const poll: Poll = {
     id,
+    creatorKey,
     question: cleanQuestion,
     isMultipleChoice: !!input.isMultipleChoice,
     isEliminationMode: isElim,
@@ -176,6 +179,18 @@ export async function createPoll(input: CreatePollInput): Promise<Poll> {
   polls[id] = poll;
   await savePolls(polls);
   return poll;
+}
+
+export function sanitizePollForPublic(poll: Poll): Poll {
+  return {
+    ...poll,
+    creatorKey: undefined,
+    voteRecords: undefined,
+    options: poll.options.map((opt) => ({
+      ...opt,
+      claimedBy: undefined, // Protect voter privacy from public viewers
+    })),
+  };
 }
 
 export async function getPoll(id: string): Promise<Poll | null> {
