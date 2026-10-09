@@ -33,9 +33,14 @@ export default function Navbar() {
             </svg>
           </div>
 
-          <span className="font-bold text-xl tracking-tight text-[var(--text)]">
-            choice<span className="text-[var(--primary)]">.</span>
-          </span>
+          <div className="flex flex-col">
+            <span className="font-bold text-lg sm:text-xl tracking-tight text-[var(--text)] leading-tight">
+              choice<span className="text-[var(--primary)]">.</span>
+            </span>
+            <span className="text-[10px] sm:text-[11px] font-medium text-[var(--text-muted)] leading-none">
+              by hinda
+            </span>
+          </div>
         </Link>
 
         {/* Contextual Actions on Right */}
