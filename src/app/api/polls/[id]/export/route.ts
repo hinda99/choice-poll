@@ -108,7 +108,7 @@ export async function GET(
       );
     });
 
-    const csvContent = "\uFEFF" + rows.join("\r\n"); // UTF-8 BOM for Excel / Sheets compatibility
+    const csvContent = rows.join("\r\n");
 
     return new Response(csvContent, {
       status: 200,
