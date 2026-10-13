@@ -45,13 +45,13 @@ export const Dialog: React.FC<DialogProps> = ({
       />
 
       <div
-        className={`relative w-full ${maxWidth} rounded-[var(--radius-dialog)] bg-[var(--surface)] border border-[var(--border)] shadow-xl p-6 sm:p-8 z-10 animate-in zoom-in-95 duration-200`}
+        className={`relative w-full ${maxWidth} max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-[var(--radius-dialog)] bg-[var(--surface)] border border-[var(--border)] shadow-xl p-5 sm:p-8 z-10 animate-in zoom-in-95 duration-200`}
       >
-        <div className="flex items-start justify-between gap-4 mb-5">
-          <div>
+        <div className="flex items-start justify-between gap-3 mb-5">
+          <div className="min-w-0 pr-1">
             <h2
               id="dialog-title"
-              className="text-xl font-bold text-[var(--text)] tracking-tight"
+              className="text-lg sm:text-xl font-bold text-[var(--text)] tracking-tight"
             >
               {title}
             </h2>
@@ -64,7 +64,7 @@ export const Dialog: React.FC<DialogProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 -mr-2 -mt-2 text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)] rounded-lg transition-colors focus-ring"
+            className="p-2 -mr-1.5 -mt-1.5 text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-muted)] rounded-lg transition-colors focus-ring shrink-0"
             aria-label="Close dialog"
           >
             <X className="w-4 h-4" />

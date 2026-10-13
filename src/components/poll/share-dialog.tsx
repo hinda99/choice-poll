@@ -63,26 +63,26 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
           <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
             {t.shareDialog.shareWithVoters}
           </label>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <input
               type="text"
               readOnly
               value={voterUrl}
-              className="flex-1 h-11 px-3.5 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text)] text-sm font-mono focus:outline-none select-all"
+              className="w-full sm:flex-1 min-w-0 h-11 px-3.5 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text)] text-sm font-mono focus:outline-none select-all"
             />
             <Button
               variant="primary"
               onClick={handleCopyVoter}
-              className="shrink-0"
+              className="w-full sm:w-auto shrink-0 justify-center h-11"
             >
               {copiedVoter ? (
                 <>
-                  <Check className="w-4 h-4 text-white" />
+                  <Check className="w-4 h-4 text-white shrink-0" />
                   <span>{t.shareDialog.copied}</span>
                 </>
               ) : (
                 <>
-                  <Copy className="w-4 h-4" />
+                  <Copy className="w-4 h-4 shrink-0" />
                   <span>{t.shareDialog.copyLink}</span>
                 </>
               )}
@@ -91,19 +91,19 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
         </div>
 
         {/* Action row */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <Link
             href={`/poll/${pollId}`}
             className="flex-1 inline-flex items-center justify-center gap-2 h-11 px-4 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-muted)] text-[var(--text)] text-sm font-semibold transition-colors"
           >
             <span>{t.shareDialog.openVotingPage}</span>
-            <ExternalLink className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+            <ExternalLink className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
           </Link>
           <Link
             href={`/poll/${pollId}/results`}
             className="flex-1 inline-flex items-center justify-center gap-2 h-11 px-4 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-muted)] text-[var(--text)] text-sm font-semibold transition-colors"
           >
-            <BarChart2 className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+            <BarChart2 className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
             <span>{t.shareDialog.viewResults}</span>
           </Link>
         </div>
@@ -113,7 +113,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
           <div className="p-4 rounded-[var(--radius-control)] border border-[var(--warning)]/30 bg-[var(--warning-soft)]/50 space-y-3">
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--warning)]">
-                <ShieldAlert className="w-4 h-4" />
+                <ShieldAlert className="w-4 h-4 shrink-0" />
                 <span>{t.shareDialog.ownerLinkTitle}</span>
               </span>
               <button
@@ -123,12 +123,12 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
               >
                 {showOwnerSecret ? (
                   <>
-                    <EyeOff className="w-3.5 h-3.5" />
+                    <EyeOff className="w-3.5 h-3.5 shrink-0" />
                     <span>{t.shareDialog.conceal}</span>
                   </>
                 ) : (
                   <>
-                    <Eye className="w-3.5 h-3.5" />
+                    <Eye className="w-3.5 h-3.5 shrink-0" />
                     <span>{t.shareDialog.reveal}</span>
                   </>
                 )}
@@ -139,27 +139,27 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
               {t.shareDialog.ownerLinkDesc}
             </p>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <input
                 type={showOwnerSecret ? "text" : "password"}
                 readOnly
                 value={ownerUrl}
-                className="flex-1 h-9 px-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-xs font-mono select-all focus:outline-none"
+                className="w-full sm:flex-1 min-w-0 h-10 sm:h-9 px-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-xs font-mono select-all focus:outline-none"
               />
               <Button
                 size="sm"
                 variant="secondary"
                 onClick={handleCopyOwner}
-                className="shrink-0"
+                className="w-full sm:w-auto shrink-0 justify-center h-10 sm:h-9 text-xs"
               >
                 {copiedOwner ? (
                   <>
-                    <Check className="w-3.5 h-3.5 text-[var(--success)]" />
+                    <Check className="w-3.5 h-3.5 text-[var(--success)] shrink-0" />
                     <span>{t.shareDialog.copied}</span>
                   </>
                 ) : (
                   <>
-                    <Copy className="w-3.5 h-3.5" />
+                    <Copy className="w-3.5 h-3.5 shrink-0" />
                     <span>{t.shareDialog.copyOwnerLink}</span>
                   </>
                 )}

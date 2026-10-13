@@ -226,9 +226,9 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
                   type="text"
                   readOnly
                   value={voterUrl}
-                  className="flex-1 h-10 px-3 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text)] text-xs font-mono select-all focus:outline-none"
+                  className="flex-1 min-w-0 h-10 px-3 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text)] text-xs font-mono select-all focus:outline-none"
                 />
-                <Button size="sm" variant="secondary" onClick={handleCopyVoter}>
+                <Button size="sm" variant="secondary" onClick={handleCopyVoter} className="shrink-0">
                   {copiedVoter ? (
                     <>
                       <Check className="w-3.5 h-3.5 text-[var(--success)]" />
@@ -254,11 +254,12 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
                   type="text"
                   readOnly
                   value={`${origin}/poll/${poll.id}/results`}
-                  className="flex-1 h-10 px-3 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text)] text-xs font-mono select-all focus:outline-none"
+                  className="flex-1 min-w-0 h-10 px-3 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text)] text-xs font-mono select-all focus:outline-none"
                 />
                 <Button
                   size="sm"
                   variant="secondary"
+                  className="shrink-0"
                   onClick={async () => {
                     await navigator.clipboard.writeText(`${origin}/poll/${poll.id}/results`);
                     showToast(t.owner.toastPublicCopied);
@@ -305,9 +306,9 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
                   type={showSecretOwnerLink ? "text" : "password"}
                   readOnly
                   value={ownerUrl}
-                  className="flex-1 h-9 px-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-xs font-mono select-all focus:outline-none"
+                  className="flex-1 min-w-0 h-9 px-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-xs font-mono select-all focus:outline-none"
                 />
-                <Button size="sm" variant="secondary" onClick={handleCopyOwner}>
+                <Button size="sm" variant="secondary" onClick={handleCopyOwner} className="shrink-0">
                   {copiedOwner ? (
                     <>
                       <Check className="w-3.5 h-3.5 text-[var(--success)]" />
