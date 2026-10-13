@@ -277,7 +277,7 @@ export default function CreatePollPage() {
             )}
 
             {/* Dominant Primary Action CTA */}
-            <div className="pt-2 flex justify-end">
+            <div className="pt-2 flex justify-center">
               <Button
                 type="submit"
                 variant="primary"
