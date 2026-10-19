@@ -176,182 +176,26 @@ export default function CreatePollPage() {
       />
 
       <form onSubmit={handleSubmit} noValidate>
-        {/* Desktop 2-column layout (720-760px main, 300-340px rules) */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] xl:grid-cols-[1fr_340px] gap-8 items-start">
-          {/* LEFT COLUMN: Question & Choices (Dominant area) */}
-          <div className="space-y-6">
-            <Card className="space-y-6 bg-[var(--surface)]">
-              {/* Question Field using reusable Textarea */}
-              <Textarea
-                ref={questionInputRef}
-                label={t.create.questionLabel}
-                value={question}
-                onChange={(e) => {
-                  setQuestion(e.target.value);
-                  if (fieldErrors.question) {
-                    setFieldErrors((prev) => ({ ...prev, question: undefined }));
-                  }
-                }}
-                maxLength={300}
-                showCounter={true}
-                placeholder={t.create.questionPlaceholder}
-                error={fieldErrors.question}
-              />
-
-              {/* Choices Field */}
-              <div className="space-y-3 pt-3 border-t border-[var(--border)]">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-semibold text-[var(--text)]">
-                    {t.create.choicesLabel}
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setIsImportDialogOpen(true)}
-                      className="text-xs text-[var(--primary)] hover:underline font-medium inline-flex items-center gap-1 cursor-pointer focus-ring rounded-sm"
-                    >
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>{t.create.uploadFileBtn}</span>
-                    </button>
-                    <span className="text-xs text-[var(--text-subtle)] font-mono tabular-nums">
-                      {t.create.choicesCount(options.length)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-2.5">
-                  {options.map((option, idx) => {
-                    const formattedIndex = String(idx + 1).padStart(2, "0");
-                    return (
-                      <div key={idx} className="flex items-center gap-2.5 group">
-                        {/* Numbered index 01, 02... */}
-                        <span className="w-8 text-center font-mono text-xs font-bold text-[var(--text-subtle)] select-none shrink-0">
-                          {formattedIndex}
-                        </span>
-
-                        {/* Input */}
-                        <input
-                          ref={(el) => {
-                            choiceInputRefs.current[idx] = el;
-                          }}
-                          type="text"
-                          value={option}
-                          maxLength={150}
-                          onChange={(e) => handleOptionChange(idx, e.target.value)}
-                          placeholder={t.create.choicePlaceholder(idx + 1)}
-                          aria-label={t.create.choiceAria(idx + 1)}
-                          className="flex-1 h-11 px-3.5 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-sm placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent transition-colors"
-                        />
-
-                        {/* Remove button with boundary disabled state & accessible label */}
-                        <button
-                          type="button"
-                          disabled={isMinChoices}
-                          onClick={() => handleRemoveOption(idx)}
-                          aria-label={
-                            isMinChoices
-                              ? t.create.minChoicesTooltip
-                              : t.create.removeChoiceAria(idx + 1)
-                          }
-                          title={
-                            isMinChoices
-                              ? t.create.minChoicesTooltip
-                              : t.create.removeChoiceAria(idx + 1)
-                          }
-                          className={`p-2.5 rounded-lg transition-colors focus-ring ${
-                            isMinChoices
-                              ? "text-[var(--text-subtle)]/40 cursor-not-allowed"
-                              : "text-[var(--text-subtle)] hover:text-[var(--danger)] hover:bg-[var(--danger-soft)] cursor-pointer"
-                          }`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Validation error for choices */}
-                {fieldErrors.options && (
-                  <InlineAlert variant="danger">
-                    {fieldErrors.options}
-                  </InlineAlert>
-                )}
-
-                {/* Clear boundary feedback for minimum choices */}
-                {isMinChoices && (
-                  <p className="text-[11px] text-[var(--text-subtle)]">
-                    {t.create.minChoicesNotice}
-                  </p>
-                )}
-
-                {/* Add choice & Upload buttons / Maximum boundary feedback */}
-                {!isMaxChoices ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-2">
-                    <button
-                      type="button"
-                      onClick={handleAddOption}
-                      className="h-11 rounded-[var(--radius-control)] border border-dashed border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]/50 text-[var(--text-muted)] hover:text-[var(--primary)] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer focus-ring"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>{t.create.addChoice}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsImportDialogOpen(true)}
-                      className="h-11 rounded-[var(--radius-control)] border border-dashed border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]/50 text-[var(--text-muted)] hover:text-[var(--primary)] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer focus-ring"
-                    >
-                      <Upload className="w-4 h-4" />
-                      <span>{t.create.uploadFileBtn}</span>
-                    </button>
-                  </div>
-                ) : (
-                  <div className="p-3 rounded-[var(--radius-control)] bg-[var(--surface-muted)] border border-[var(--border)] text-center text-xs text-[var(--text-muted)] font-medium">
-                    {t.create.maxChoicesReached}
-                  </div>
-                )}
-              </div>
-            </Card>
-
-            {/* Error message from API */}
-            {errorMessage && (
-              <InlineAlert variant="danger">
-                {errorMessage}
-              </InlineAlert>
-            )}
-
-            {/* Dominant Primary Action CTA */}
-            <div className="pt-2 flex justify-center">
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                isLoading={isSubmitting}
-                className="w-full sm:w-auto px-8 font-semibold text-base shadow-xs"
-              >
-                <span>{t.create.createAndShare}</span>
-                <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
+        <div className="space-y-6 max-w-[880px] mx-auto">
+          {/* TOP SECTION: Poll Rules */}
+          <Card className="space-y-4 bg-[var(--surface)]">
+            <div className="flex items-center gap-2 pb-2 border-b border-[var(--border)]">
+              <Layers className="w-4 h-4 text-[var(--primary)]" />
+              <h2 className="text-sm font-bold text-[var(--text)] tracking-tight">
+                {t.create.rulesHeading}
+              </h2>
             </div>
-          </div>
 
-          {/* RIGHT COLUMN: Poll Rules (Narrower column) */}
-          <div className="space-y-4">
-            <Card className="space-y-4 bg-[var(--surface)]">
-              <div className="flex items-center gap-2 pb-2 border-b border-[var(--border)]">
-                <Layers className="w-4 h-4 text-[var(--primary)]" />
-                <h2 className="text-sm font-bold text-[var(--text)] tracking-tight">
-                  {t.create.rulesHeading}
-                </h2>
-              </div>
-
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
               {/* Rule 1: Allow multiple selections */}
-              <Switch
-                checked={isMultipleChoice}
-                onChange={setIsMultipleChoice}
-                label={t.create.ruleMultipleChoiceTitle}
-                description={t.create.ruleMultipleChoiceDesc}
-              />
+              <div className="space-y-3">
+                <Switch
+                  checked={isMultipleChoice}
+                  onChange={setIsMultipleChoice}
+                  label={t.create.ruleMultipleChoiceTitle}
+                  description={t.create.ruleMultipleChoiceDesc}
+                />
+              </div>
 
               {/* Rule 2: Limit votes per choice (Elimination mode) */}
               <div className="space-y-3">
@@ -403,7 +247,162 @@ export default function CreatePollPage() {
                   />
                 )}
               </div>
-            </Card>
+            </div>
+          </Card>
+
+          {/* MAIN SECTION: Question & Choices */}
+          <Card className="space-y-6 bg-[var(--surface)]">
+            {/* Question Field using reusable Textarea */}
+            <Textarea
+              ref={questionInputRef}
+              label={t.create.questionLabel}
+              value={question}
+              onChange={(e) => {
+                setQuestion(e.target.value);
+                if (fieldErrors.question) {
+                  setFieldErrors((prev) => ({ ...prev, question: undefined }));
+                }
+              }}
+              maxLength={300}
+              showCounter={true}
+              placeholder={t.create.questionPlaceholder}
+              error={fieldErrors.question}
+            />
+
+            {/* Choices Field */}
+            <div className="space-y-3 pt-3 border-t border-[var(--border)]">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-semibold text-[var(--text)]">
+                  {t.create.choicesLabel}
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsImportDialogOpen(true)}
+                    className="text-xs text-[var(--primary)] hover:underline font-medium inline-flex items-center gap-1 cursor-pointer focus-ring rounded-sm"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{t.create.uploadFileBtn}</span>
+                  </button>
+                  <span className="text-xs text-[var(--text-subtle)] font-mono tabular-nums">
+                    {t.create.choicesCount(options.length)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2.5">
+                {options.map((option, idx) => {
+                  const formattedIndex = String(idx + 1).padStart(2, "0");
+                  return (
+                    <div key={idx} className="flex items-center gap-2.5 group">
+                      {/* Numbered index 01, 02... */}
+                      <span className="w-8 text-center font-mono text-xs font-bold text-[var(--text-subtle)] select-none shrink-0">
+                        {formattedIndex}
+                      </span>
+
+                      {/* Input */}
+                      <input
+                        ref={(el) => {
+                          choiceInputRefs.current[idx] = el;
+                        }}
+                        type="text"
+                        value={option}
+                        maxLength={150}
+                        onChange={(e) => handleOptionChange(idx, e.target.value)}
+                        placeholder={t.create.choicePlaceholder(idx + 1)}
+                        aria-label={t.create.choiceAria(idx + 1)}
+                        className="flex-1 h-11 px-3.5 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-sm placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent transition-colors"
+                      />
+
+                      {/* Remove button with boundary disabled state & accessible label */}
+                      <button
+                        type="button"
+                        disabled={isMinChoices}
+                        onClick={() => handleRemoveOption(idx)}
+                        aria-label={
+                          isMinChoices
+                            ? t.create.minChoicesTooltip
+                            : t.create.removeChoiceAria(idx + 1)
+                        }
+                        title={
+                          isMinChoices
+                            ? t.create.minChoicesTooltip
+                            : t.create.removeChoiceAria(idx + 1)
+                        }
+                        className={`p-2.5 rounded-lg transition-colors focus-ring ${
+                          isMinChoices
+                            ? "text-[var(--text-subtle)]/40 cursor-not-allowed"
+                            : "text-[var(--text-subtle)] hover:text-[var(--danger)] hover:bg-[var(--danger-soft)] cursor-pointer"
+                        }`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Validation error for choices */}
+              {fieldErrors.options && (
+                <InlineAlert variant="danger">
+                  {fieldErrors.options}
+                </InlineAlert>
+              )}
+
+              {/* Clear boundary feedback for minimum choices */}
+              {isMinChoices && (
+                <p className="text-[11px] text-[var(--text-subtle)]">
+                  {t.create.minChoicesNotice}
+                </p>
+              )}
+
+              {/* Add choice & Upload buttons / Maximum boundary feedback */}
+              {!isMaxChoices ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-2">
+                  <button
+                    type="button"
+                    onClick={handleAddOption}
+                    className="h-11 rounded-[var(--radius-control)] border border-dashed border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]/50 text-[var(--text-muted)] hover:text-[var(--primary)] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer focus-ring"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>{t.create.addChoice}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsImportDialogOpen(true)}
+                    className="h-11 rounded-[var(--radius-control)] border border-dashed border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]/50 text-[var(--text-muted)] hover:text-[var(--primary)] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer focus-ring"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span>{t.create.uploadFileBtn}</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="p-3 rounded-[var(--radius-control)] bg-[var(--surface-muted)] border border-[var(--border)] text-center text-xs text-[var(--text-muted)] font-medium">
+                  {t.create.maxChoicesReached}
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {/* Error message from API */}
+          {errorMessage && (
+            <InlineAlert variant="danger">
+              {errorMessage}
+            </InlineAlert>
+          )}
+
+          {/* Dominant Primary Action CTA */}
+          <div className="pt-2 flex justify-center">
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              isLoading={isSubmitting}
+              className="w-full sm:w-auto px-8 font-semibold text-base shadow-xs"
+            >
+              <span>{t.create.createAndShare}</span>
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
           </div>
         </div>
       </form>
