@@ -1,4 +1,4 @@
-import { parseOptionsFromFile } from "../src/lib/file-parser.js";
+import { parseOptionsFromFile } from "../src/lib/file-parser.ts";
 import assert from "node:assert";
 
 console.log("Testing parseOptionsFromFile...");
@@ -52,12 +52,12 @@ const res5 = parseOptionsFromFile(csv3, "ice-cream.csv");
 assert.deepStrictEqual(res5, ["Vanilla", "Chocolate", "Strawberry"]);
 console.log("✓ Test 5: CSV header removal passed");
 
-// Test 6: 120 items truncation to 100
-const manyItems = Array.from({ length: 120 }, (_, i) => `Option ${i + 1}`).join("\n");
+// Test 6: 220 items truncation to 200
+const manyItems = Array.from({ length: 220 }, (_, i) => `Option ${i + 1}`).join("\n");
 const res6 = parseOptionsFromFile(manyItems, "many.txt");
-assert.strictEqual(res6.length, 100);
+assert.strictEqual(res6.length, 200);
 assert.strictEqual(res6[0], "Option 1");
-assert.strictEqual(res6[99], "Option 100");
-console.log("✓ Test 6: 100-choice cap passed");
+assert.strictEqual(res6[199], "Option 200");
+console.log("✓ Test 6: 200-choice cap passed");
 
 console.log("\nALL PARSER TESTS PASSED!");
