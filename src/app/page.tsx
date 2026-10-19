@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { Plus, Trash2, ArrowRight, Layers } from "lucide-react";
+import { Plus, Trash2, ArrowRight, Layers, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -12,10 +12,13 @@ import { CapacitySlider } from "@/components/poll/capacity-slider";
 import { VoteLimitSlider } from "@/components/poll/vote-limit-slider";
 import { TimeLimitSlider } from "@/components/poll/time-limit-slider";
 import { ShareDialog } from "@/components/poll/share-dialog";
+import { ImportOptionsDialog } from "@/components/poll/import-options-dialog";
+import { useToast } from "@/components/ui/toast";
 import { useLanguage } from "@/lib/language-context";
 
 export default function CreatePollPage() {
   const { t } = useLanguage();
+  const { showToast } = useToast();
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState<string[]>(["", ""]);
   const [isMultipleChoice, setIsMultipleChoice] = useState(false);
@@ -36,9 +39,30 @@ export default function CreatePollPage() {
   const [createdPollId, setCreatedPollId] = useState<string | null>(null);
   const [createdAdminKey, setCreatedAdminKey] = useState<string | null>(null);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const questionInputRef = useRef<HTMLTextAreaElement>(null);
   const choiceInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const handleImportChoices = (
+    imported: string[],
+    mode: "replace" | "append",
+    fileName: string
+  ) => {
+    if (mode === "replace") {
+      setOptions(imported);
+    } else {
+      const currentNonEmpty = options.filter((opt) => opt.trim().length > 0);
+      const combined = [...currentNonEmpty, ...imported].slice(0, 100);
+      setOptions(combined);
+    }
+
+    if (fieldErrors.options) {
+      setFieldErrors((prev) => ({ ...prev, options: undefined }));
+    }
+
+    showToast(t.create.toastImportSuccess(imported.length, fileName), "success");
+  };
 
   const handleAddOption = () => {
     if (options.length < 100) {
@@ -180,9 +204,19 @@ export default function CreatePollPage() {
                   <label className="text-sm font-semibold text-[var(--text)]">
                     {t.create.choicesLabel}
                   </label>
-                  <span className="text-xs text-[var(--text-subtle)] font-mono tabular-nums">
-                    {t.create.choicesCount(options.length)}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsImportDialogOpen(true)}
+                      className="text-xs text-[var(--primary)] hover:underline font-medium inline-flex items-center gap-1 cursor-pointer focus-ring rounded-sm"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{t.create.uploadFileBtn}</span>
+                    </button>
+                    <span className="text-xs text-[var(--text-subtle)] font-mono tabular-nums">
+                      {t.create.choicesCount(options.length)}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="space-y-2.5">
@@ -251,16 +285,26 @@ export default function CreatePollPage() {
                   </p>
                 )}
 
-                {/* Add choice button / Maximum boundary feedback */}
+                {/* Add choice & Upload buttons / Maximum boundary feedback */}
                 {!isMaxChoices ? (
-                  <button
-                    type="button"
-                    onClick={handleAddOption}
-                    className="w-full mt-2 h-11 rounded-[var(--radius-control)] border border-dashed border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]/50 text-[var(--text-muted)] hover:text-[var(--primary)] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer focus-ring"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>{t.create.addChoice}</span>
-                  </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-2">
+                    <button
+                      type="button"
+                      onClick={handleAddOption}
+                      className="h-11 rounded-[var(--radius-control)] border border-dashed border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]/50 text-[var(--text-muted)] hover:text-[var(--primary)] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer focus-ring"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>{t.create.addChoice}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsImportDialogOpen(true)}
+                      className="h-11 rounded-[var(--radius-control)] border border-dashed border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]/50 text-[var(--text-muted)] hover:text-[var(--primary)] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer focus-ring"
+                    >
+                      <Upload className="w-4 h-4" />
+                      <span>{t.create.uploadFileBtn}</span>
+                    </button>
+                  </div>
                 ) : (
                   <div className="p-3 rounded-[var(--radius-control)] bg-[var(--surface-muted)] border border-[var(--border)] text-center text-xs text-[var(--text-muted)] font-medium">
                     {t.create.maxChoicesReached}
@@ -373,6 +417,14 @@ export default function CreatePollPage() {
           creatorKey={createdAdminKey || undefined}
         />
       )}
+
+      {/* Import Choices from File Dialog */}
+      <ImportOptionsDialog
+        isOpen={isImportDialogOpen}
+        onClose={() => setIsImportDialogOpen(false)}
+        onImport={handleImportChoices}
+        hasExistingChoices={options.some((opt) => opt.trim().length > 0)}
+      />
     </div>
   );
 }
