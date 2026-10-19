@@ -36,10 +36,10 @@ export const VoteResultsBar: React.FC<VoteResultsBarProps> = ({
   return (
     <div className="space-y-2 p-3.5 sm:p-4 rounded-[var(--radius-card)] bg-[var(--surface)] border border-[var(--border)] transition-colors shadow-xs">
       {/* Row Header */}
-      <div className="flex items-center justify-between gap-3 text-sm">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-3 text-sm">
+        <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
           <span
-            className={`font-semibold truncate block ${
+            className={`font-semibold break-words sm:truncate block ${
               isFull ? "text-[var(--text-muted)] line-through" : "text-[var(--text)]"
             }`}
           >
@@ -75,7 +75,7 @@ export const VoteResultsBar: React.FC<VoteResultsBarProps> = ({
         </div>
 
         {/* Numeric metric with explicit denominator */}
-        <div className="flex items-baseline gap-2 shrink-0 text-right">
+        <div className="flex items-baseline gap-2 shrink-0 self-end sm:self-auto text-right">
           <span className="text-xs text-[var(--text-muted)] font-mono tabular-nums">
             {t.voteBar.voteCount(votes)}
           </span>

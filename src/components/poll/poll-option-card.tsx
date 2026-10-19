@@ -37,11 +37,12 @@ export const PollOptionCard: React.FC<PollOptionCardProps> = ({
   const isFull = isEliminated || (isEliminationMode && spotsRemaining === 0);
   const isNearLimit = isEliminationMode && spotsRemaining === 1 && !isFull;
   const isInteractive = !disabled && !isFull;
+  const hasBadge = isFull || isEliminationMode;
 
   return (
     <label
       htmlFor={`option-${id}`}
-      className={`relative flex items-center justify-between p-4 sm:p-5 rounded-[var(--radius-card)] transition-all select-none border ${
+      className={`relative flex items-start gap-3 sm:gap-3.5 p-3.5 sm:p-4 rounded-[var(--radius-card)] transition-all select-none border ${
         !isInteractive
           ? "bg-[var(--surface-muted)]/60 border-[var(--border)] opacity-60 cursor-not-allowed"
           : isSelected
@@ -66,61 +67,61 @@ export const PollOptionCard: React.FC<PollOptionCardProps> = ({
         aria-label={`${text}${isFull ? ` (${t.pollOption.full})` : ""}`}
       />
 
-      <div className="flex items-center gap-3.5 min-w-0 flex-1 pr-3">
-        {/* Custom indicator styled to match tokens */}
-        <div
-          className={`w-5 h-5 flex items-center justify-center shrink-0 transition-colors border ${
-            isMultipleChoice ? "rounded-[6px]" : "rounded-full"
-          } ${
-            isFull
-              ? "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-subtle)]"
-              : isSelected
-              ? "border-[var(--primary)] bg-[var(--primary)] text-white"
-              : "border-[var(--border)] bg-[var(--surface)]"
-          }`}
-          aria-hidden="true"
-        >
-          {isFull ? (
-            <Lock className="w-3 h-3 text-[var(--text-subtle)]" />
-          ) : isSelected ? (
-            <Check className="w-3.5 h-3.5 stroke-[3]" />
-          ) : null}
-        </div>
-
-        {/* Choice text */}
-        <div className="min-w-0 flex-1">
-          <span
-            className={`text-base font-semibold block leading-snug break-words ${
-              isFull
-                ? "text-[var(--text-muted)] line-through"
-                : isSelected
-                ? "text-[var(--primary)] dark:text-[var(--text)]"
-                : "text-[var(--text)]"
-            }`}
-          >
-            {text}
-          </span>
-        </div>
+      {/* Custom indicator styled to match tokens */}
+      <div
+        className={`w-5 h-5 mt-0.5 flex items-center justify-center shrink-0 transition-colors border ${
+          isMultipleChoice ? "rounded-[6px]" : "rounded-full"
+        } ${
+          isFull
+            ? "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-subtle)]"
+            : isSelected
+            ? "border-[var(--primary)] bg-[var(--primary)] text-white"
+            : "border-[var(--border)] bg-[var(--surface)]"
+        }`}
+        aria-hidden="true"
+      >
+        {isFull ? (
+          <Lock className="w-3 h-3 text-[var(--text-subtle)]" />
+        ) : isSelected ? (
+          <Check className="w-3.5 h-3.5 stroke-[3]" />
+        ) : null}
       </div>
 
-      {/* Spot countdown and capacity state */}
-      <div className="shrink-0">
-        {isFull ? (
-          <Badge variant="neutral" className="gap-1 font-semibold">
-            <Lock className="w-3 h-3" />
-            <span>{t.pollOption.full}</span>
-          </Badge>
-        ) : isEliminationMode ? (
-          isNearLimit ? (
-            <Badge variant="warning" className="font-semibold">
-              <span>{t.pollOption.oneSpotRemaining}</span>
-            </Badge>
-          ) : (
-            <Badge variant="capacity" className="font-semibold">
-              <span>{t.pollOption.spotsRemaining(spotsRemaining, maxClaims)}</span>
-            </Badge>
-          )
-        ) : null}
+      {/* Content area: Choice text + Badge */}
+      <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-3">
+        <span
+          className={`text-sm sm:text-base font-semibold block leading-snug break-words ${
+            isFull
+              ? "text-[var(--text-muted)] line-through"
+              : isSelected
+              ? "text-[var(--primary)] dark:text-[var(--text)]"
+              : "text-[var(--text)]"
+          }`}
+        >
+          {text}
+        </span>
+
+        {/* Spot countdown and capacity state */}
+        {hasBadge && (
+          <div className="shrink-0 self-start sm:self-center">
+            {isFull ? (
+              <Badge variant="neutral" className="gap-1 font-semibold text-[11px] sm:text-xs">
+                <Lock className="w-3 h-3" />
+                <span>{t.pollOption.full}</span>
+              </Badge>
+            ) : isEliminationMode ? (
+              isNearLimit ? (
+                <Badge variant="warning" className="font-semibold text-[11px] sm:text-xs">
+                  <span>{t.pollOption.oneSpotRemaining}</span>
+                </Badge>
+              ) : (
+                <Badge variant="capacity" className="font-semibold text-[11px] sm:text-xs">
+                  <span>{t.pollOption.spotsRemaining(spotsRemaining, maxClaims)}</span>
+                </Badge>
+              )
+            ) : null}
+          </div>
+        )}
       </div>
     </label>
   );
