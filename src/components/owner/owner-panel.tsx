@@ -13,6 +13,7 @@ import {
   ListOrdered,
   Share2,
   Download,
+  FileSpreadsheet,
   Copy,
   Check,
   Eye,
@@ -178,15 +179,25 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
               </Link>
 
               <a
+                href={`/api/polls/${poll.id}/export?format=xlsx&adminKey=${adminKey}`}
+                download={`poll-${poll.id}-results.xlsx`}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-[var(--radius-control)] border border-[var(--success)]/40 bg-[var(--success-soft)] hover:bg-[var(--success)]/20 text-xs font-semibold text-[var(--success-text,#166534)] dark:text-[var(--success)] transition-colors"
+                title={t.owner.exportResponsesExcelDesc}
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-[var(--success)]" />
+                <span>{t.common.downloadExcel}</span>
+              </a>
+
+              <a
                 href={`/api/polls/${poll.id}/export?adminKey=${adminKey}`}
                 download={`poll-${poll.id}-results.csv`}
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-muted)] text-xs font-semibold text-[var(--text)] transition-colors"
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-muted)] text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
               >
-                <Download className="w-3.5 h-3.5 text-[var(--success)]" />
+                <Download className="w-3.5 h-3.5 text-[var(--text-muted)]" />
                 <span>{t.common.downloadCsv}</span>
               </a>
               <span className="text-xs text-[var(--text-muted)] hidden md:inline">
-                {t.owner.downloadCsvSheetsDesc}
+                {t.owner.exportResponsesExcelDesc}
               </span>
             </div>
           </div>
@@ -195,16 +206,27 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
         {/* TAB 2: RESPONSES */}
         {activeTab === "responses" && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--text-muted)]">
               <span>{t.owner.namesAndChoicesSubmitted}</span>
-              <a
-                href={`/api/polls/${poll.id}/export?adminKey=${adminKey}`}
-                download={`poll-${poll.id}-results.csv`}
-                className="text-[var(--primary)] hover:underline font-medium inline-flex items-center gap-1"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>{t.common.downloadCsv}</span>
-              </a>
+              <div className="flex items-center gap-3">
+                <a
+                  href={`/api/polls/${poll.id}/export?format=xlsx&adminKey=${adminKey}`}
+                  download={`poll-${poll.id}-results.xlsx`}
+                  className="text-[var(--success)] hover:underline font-semibold inline-flex items-center gap-1"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>{t.common.downloadExcel}</span>
+                </a>
+                <span className="text-[var(--border)]">|</span>
+                <a
+                  href={`/api/polls/${poll.id}/export?adminKey=${adminKey}`}
+                  download={`poll-${poll.id}-results.csv`}
+                  className="text-[var(--text-muted)] hover:text-[var(--text)] hover:underline font-medium inline-flex items-center gap-1"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>{t.common.downloadCsv}</span>
+                </a>
+              </div>
             </div>
             <ResponseTable
               records={poll.voteRecords || []}
@@ -324,24 +346,34 @@ export const OwnerPanel: React.FC<OwnerPanelProps> = ({ poll, adminKey }) => {
               </div>
             </div>
 
-            {/* CSV Export */}
+            {/* Excel & CSV Export */}
             <div className="pt-2 border-t border-[var(--border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <span className="text-xs font-semibold text-[var(--text)] block">
-                  {t.owner.exportResponsesCsv}
+                  {t.owner.exportResponsesExcel}
                 </span>
                 <span className="text-xs text-[var(--text-muted)]">
-                  {t.owner.exportResponsesCsvDesc}
+                  {t.owner.exportResponsesExcelDesc}
                 </span>
               </div>
-              <a
-                href={`/api/polls/${poll.id}/export?adminKey=${adminKey}`}
-                download={`poll-${poll.id}-results.csv`}
-                className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-[var(--radius-control)] bg-[var(--surface)] hover:bg-[var(--surface-muted)] border border-[var(--border)] text-[var(--text)] text-xs font-bold transition-colors shrink-0"
-              >
-                <Download className="w-3.5 h-3.5 text-[var(--success)]" />
-                <span>{t.common.downloadCsv}</span>
-              </a>
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <a
+                  href={`/api/polls/${poll.id}/export?format=xlsx&adminKey=${adminKey}`}
+                  download={`poll-${poll.id}-results.xlsx`}
+                  className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-[var(--radius-control)] bg-[var(--success)] hover:bg-[var(--success)]/90 text-white text-xs font-bold transition-colors shadow-xs"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-white" />
+                  <span>{t.common.downloadExcel}</span>
+                </a>
+                <a
+                  href={`/api/polls/${poll.id}/export?adminKey=${adminKey}`}
+                  download={`poll-${poll.id}-results.csv`}
+                  className="inline-flex items-center justify-center gap-2 h-10 px-3 rounded-[var(--radius-control)] bg-[var(--surface)] hover:bg-[var(--surface-muted)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)] text-xs font-semibold transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>{t.common.downloadCsv}</span>
+                </a>
+              </div>
             </div>
           </div>
         )}

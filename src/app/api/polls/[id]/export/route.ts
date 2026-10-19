@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPoll } from "@/lib/db";
 import { fixMojibake } from "@/lib/encoding";
+import { generatePollExcel } from "@/lib/xlsx";
 
 function sanitizeFormula(val: string | number | undefined | null): string {
   if (val === undefined || val === null) return "";
@@ -58,6 +59,19 @@ export async function GET(
         { error: "Access denied. Only the poll owner can export voter response logs." },
         { status: 403 }
       );
+    }
+
+    const format = request.nextUrl.searchParams.get("format");
+    if (format === "xlsx") {
+      const excelBuffer = generatePollExcel(poll);
+      return new Response(new Uint8Array(excelBuffer), {
+        status: 200,
+        headers: {
+          "Content-Type":
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": `attachment; filename="poll-${poll.id}-results.xlsx"`,
+        },
+      });
     }
 
     const rows: string[] = [];

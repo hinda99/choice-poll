@@ -649,8 +649,44 @@ async function runCsvExportTests() {
     "Repaired 'dâ€™un' to 'd’un'"
   );
 
+  // ----------------------------------------------------
+  // TEST 10: Excel (.xlsx) Export Verification
+  // ----------------------------------------------------
+  console.log("\n--- TEST 10: Excel (.xlsx) Export Verification ---");
+  const xlsxExportRes = await fetch(
+    `${baseUrl}/api/polls/${mojibakePollId}/export?format=xlsx&adminKey=${mojibakeAdminKey}`
+  );
+  assert(xlsxExportRes.status === 200, "Exported Excel (.xlsx) successfully (status 200)");
+  assert(
+    xlsxExportRes.headers
+      .get("content-type")
+      ?.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+    "Content-Type is OpenXML spreadsheet (.xlsx)"
+  );
+  assert(
+    xlsxExportRes.headers
+      .get("content-disposition")
+      ?.includes(`poll-${mojibakePollId}-results.xlsx`),
+    "Content-Disposition specifies .xlsx filename"
+  );
+
+  const xlsxBuf = await xlsxExportRes.arrayBuffer();
+  const xlsxBytes = new Uint8Array(xlsxBuf);
+
+  // Check standard ZIP header signature: PK\x03\x04 (0x50, 0x4B, 0x03, 0x04)
+  assert(
+    xlsxBytes[0] === 0x50 &&
+      xlsxBytes[1] === 0x4b &&
+      xlsxBytes[2] === 0x03 &&
+      xlsxBytes[3] === 0x04,
+    "Valid ZIP archive signature (PK\\x03\\x04) for .xlsx container"
+  );
+
+  // Check file size is reasonable (> 1000 bytes)
+  assert(xlsxBytes.length > 1000, `Excel file has valid size (${xlsxBytes.length} bytes)`);
+
   console.log("\n==========================================================");
-  console.log(`   ALL ${passed} / ${total} CHOICE-BASED CSV TESTS PASSED! `);
+  console.log(`   ALL ${passed} / ${total} EXPORT & XLSX TESTS PASSED! `);
   console.log("==========================================================\n");
 }
 
