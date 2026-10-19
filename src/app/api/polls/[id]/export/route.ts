@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPoll } from "@/lib/db";
+import { fixMojibake } from "@/lib/encoding";
 
 function sanitizeFormula(val: string | number | undefined | null): string {
   if (val === undefined || val === null) return "";
@@ -89,8 +90,8 @@ export async function GET(
         .map((name) => name.trim());
 
       // Group all voter names into the same cell, separated by commas.
-      // Neutralize formula injection on each voter name individually.
-      const sanitizedVoters = cleanVoters.map((name) => sanitizeFormula(name));
+      // Neutralize formula injection on each voter name individually and repair any mojibake encoding.
+      const sanitizedVoters = cleanVoters.map((name) => sanitizeFormula(fixMojibake(name)));
       const votersCell = sanitizedVoters.join(", ");
 
       // Calculate total number of votes for this choice
@@ -101,14 +102,16 @@ export async function GET(
 
       rows.push(
         [
-          escapeCsvCell(opt.text),
+          escapeCsvCell(fixMojibake(opt.text)),
           escapeCsvCell(votersCell),
           escapeCsvCell(totalVotes),
         ].join(",")
       );
     });
 
-    const csvContent = rows.join("\r\n");
+    // Prepend UTF-8 BOM (\uFEFF) so Excel and Google Sheets on mobile and desktop
+    // automatically recognize the file as UTF-8 and correctly display accented characters (é, è, ê, etc.)
+    const csvContent = "\uFEFF" + rows.join("\r\n");
 
     return new Response(csvContent, {
       status: 200,

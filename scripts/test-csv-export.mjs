@@ -593,6 +593,62 @@ async function runCsvExportTests() {
   assert(sanitizeFormula(null) === "", "Null produces empty string without throwing");
   assert(sanitizeFormula(undefined) === "", "Undefined produces empty string without throwing");
 
+  // ----------------------------------------------------
+  // TEST 9: Mojibake / Latin-1 Misinterpretation Repair
+  // ----------------------------------------------------
+  console.log("\n--- TEST 9: Mojibake Repair & Phone Spreadsheet Compatibility ---");
+  const mojibakePollRes = await fetch(`${baseUrl}/api/polls`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      question: "Sondage MathÃ©matiques",
+      options: [
+        "[1AC] OpÃ©rations",
+        "[1AC] InÃ©galitÃ© triangulaire",
+        "[1AC] Ã‰quations",
+        "[1AC] Bissectrice et hauteur dâ€™un triangle",
+      ],
+      isMultipleChoice: false,
+    }),
+  });
+  const mojibakeData = await mojibakePollRes.json();
+  const mojibakePollId = mojibakeData.poll.id;
+  const mojibakeAdminKey = mojibakeData.creatorKey;
+  assert(mojibakePollRes.status === 201, "Created poll with mojibake input");
+
+  await fetch(`${baseUrl}/api/polls/${mojibakePollId}/vote`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      optionIds: ["opt-1"],
+      voterName: "Adnane Hinda",
+    }),
+  });
+
+  const mojibakeExportRes = await fetch(
+    `${baseUrl}/api/polls/${mojibakePollId}/export?adminKey=${mojibakeAdminKey}`
+  );
+  assert(mojibakeExportRes.status === 200, "Exported mojibake poll CSV");
+  const mojibakeBuf = await mojibakeExportRes.arrayBuffer();
+  const mojibakeBytes = new Uint8Array(mojibakeBuf);
+
+  // UTF-8 BOM check
+  assert(
+    mojibakeBytes[0] === 0xef && mojibakeBytes[1] === 0xbb && mojibakeBytes[2] === 0xbf,
+    "Begins with UTF-8 BOM so mobile Google Sheets & Excel display accents properly"
+  );
+
+  const mojibakeText = new TextDecoder("utf-8").decode(mojibakeBuf);
+  const mojibakeRows = parseCSV(mojibakeText);
+
+  assert(mojibakeRows[1][0] === "[1AC] Opérations", "Repaired 'OpÃ©rations' to 'Opérations'");
+  assert(mojibakeRows[2][0] === "[1AC] Inégalité triangulaire", "Repaired 'InÃ©galitÃ©' to 'Inégalité'");
+  assert(mojibakeRows[3][0] === "[1AC] Équations", "Repaired 'Ã‰quations' to 'Équations'");
+  assert(
+    mojibakeRows[4][0] === "[1AC] Bissectrice et hauteur d’un triangle",
+    "Repaired 'dâ€™un' to 'd’un'"
+  );
+
   console.log("\n==========================================================");
   console.log(`   ALL ${passed} / ${total} CHOICE-BASED CSV TESTS PASSED! `);
   console.log("==========================================================\n");

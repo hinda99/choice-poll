@@ -1,6 +1,4 @@
-/**
- * Utility functions for parsing choices from uploaded .csv and .txt files.
- */
+import { fixMojibake } from "./encoding";
 
 /**
  * Cleans an individual choice string:
@@ -8,10 +6,11 @@
  * - Strips leading list bullets (- , * , • , – )
  * - Strips leading numbered prefixes (1. , 01) , [1] )
  * - Trims whitespace
+ * - Repairs mojibake/corrupted character encoding
  * - Enforces max length of 150 characters
  */
 export function cleanChoiceString(str: string): string {
-  let cleaned = str.trim();
+  let cleaned = fixMojibake(str.trim());
 
   // Remove surrounding single or double quotes
   if (

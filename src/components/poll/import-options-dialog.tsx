@@ -67,7 +67,14 @@ export const ImportOptionsDialog: React.FC<ImportOptionsDialogProps> = ({
     }
 
     try {
-      const content = await file.text();
+      // Decode with fallback to windows-1252 / ISO-8859-1 for Excel-exported French CSVs
+      const buffer = await file.arrayBuffer();
+      let content = "";
+      try {
+        content = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+      } catch {
+        content = new TextDecoder("windows-1252").decode(buffer);
+      }
       const choices = parseOptionsFromFile(content, file.name);
 
       if (choices.length === 0) {

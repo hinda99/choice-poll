@@ -2,6 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import { EventEmitter } from "events";
 import { Poll, CreatePollInput } from "./types";
+import { fixMojibake } from "./encoding";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const DATA_FILE = path.join(DATA_DIR, "polls.json");
@@ -101,13 +102,13 @@ export async function createPoll(input: CreatePollInput): Promise<Poll> {
     id = generateId();
   }
 
-  const cleanQuestion = input.question?.trim() || "";
+  const cleanQuestion = fixMojibake(input.question?.trim() || "");
   if (cleanQuestion.length < 1 || cleanQuestion.length > 300) {
     throw new Error("Question must be between 1 and 300 characters.");
   }
 
   const cleanOptions = (input.options || [])
-    .map((opt) => (typeof opt === "string" ? opt.trim() : ""))
+    .map((opt) => (typeof opt === "string" ? fixMojibake(opt.trim()) : ""))
     .filter((opt) => opt.length > 0);
 
   if (cleanOptions.length < 2) {
@@ -195,7 +196,23 @@ export function sanitizePollForPublic(poll: Poll): Poll {
 
 export async function getPoll(id: string): Promise<Poll | null> {
   const polls = await loadPolls();
-  return polls[id] || null;
+  const poll = polls[id];
+  if (!poll) return null;
+  return {
+    ...poll,
+    question: fixMojibake(poll.question),
+    options: poll.options.map((opt) => ({
+      ...opt,
+      text: fixMojibake(opt.text),
+      claimedBy: opt.claimedBy ? opt.claimedBy.map((c) => fixMojibake(c)) : undefined,
+    })),
+    voteRecords: poll.voteRecords
+      ? poll.voteRecords.map((vr) => ({
+          ...vr,
+          voterName: fixMojibake(vr.voterName),
+        }))
+      : undefined,
+  };
 }
 
 export async function votePoll(
@@ -223,7 +240,7 @@ export async function votePoll(
       throw new Error("This poll has expired! Voting has closed.");
     }
 
-    const cleanName = typeof voterName === "string" ? voterName.trim() : "";
+    const cleanName = typeof voterName === "string" ? fixMojibake(voterName.trim()) : "";
     if (!cleanName || cleanName.length < 2) {
       throw new Error("Please enter your full name (at least 2 characters) to vote.");
     }
