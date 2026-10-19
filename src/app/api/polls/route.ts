@@ -28,9 +28,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (options.length > 100) {
+    if (options.length > 200) {
       return NextResponse.json(
-        { error: "You can create at most 100 choices." },
+        { error: "You can create at most 200 choices." },
         { status: 400 }
       );
     }

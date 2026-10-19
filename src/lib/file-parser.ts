@@ -138,7 +138,7 @@ const COMMON_HEADER_KEYWORDS = new Set([
  * - Strips bullets, numbers, formatting
  * - Omits blank entries
  * - Discards common table headers if detected
- * - Limits to maximum 100 options
+ * - Limits to maximum 200 options
  */
 export function parseOptionsFromFile(
   content: string,
@@ -180,6 +180,6 @@ export function parseOptionsFromFile(
     }
   }
 
-  // Enforce maximum 100 choices
-  return extracted.slice(0, 100);
+  // Enforce maximum 200 choices
+  return extracted.slice(0, 200);
 }

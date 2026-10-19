@@ -53,7 +53,7 @@ export default function CreatePollPage() {
       setOptions(imported);
     } else {
       const currentNonEmpty = options.filter((opt) => opt.trim().length > 0);
-      const combined = [...currentNonEmpty, ...imported].slice(0, 100);
+      const combined = [...currentNonEmpty, ...imported].slice(0, 200);
       setOptions(combined);
     }
 
@@ -65,7 +65,7 @@ export default function CreatePollPage() {
   };
 
   const handleAddOption = () => {
-    if (options.length < 100) {
+    if (options.length < 200) {
       setOptions([...options, ""]);
       setTimeout(() => {
         const nextIndex = options.length;
@@ -107,7 +107,7 @@ export default function CreatePollPage() {
 
     if (cleanOptions.length < 2) {
       errors.options = t.create.choicesErrorMin;
-    } else if (cleanOptions.length > 100) {
+    } else if (cleanOptions.length > 200) {
       errors.options = t.create.choicesErrorMax;
     }
 
@@ -165,7 +165,7 @@ export default function CreatePollPage() {
   };
 
   const isMinChoices = options.length <= 2;
-  const isMaxChoices = options.length >= 100;
+  const isMaxChoices = options.length >= 200;
 
   return (
     <div className="space-y-8">

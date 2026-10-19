@@ -219,7 +219,7 @@ export const ImportOptionsDialog: React.FC<ImportOptionsDialogProps> = ({
                   {t.create.choicesPreview}
                 </span>
                 <span className="text-xs font-mono font-medium text-[var(--primary)]">
-                  {parsedChoices.length} / 100
+                  {parsedChoices.length} / 200
                 </span>
               </div>
 
@@ -229,7 +229,7 @@ export const ImportOptionsDialog: React.FC<ImportOptionsDialogProps> = ({
                     key={idx}
                     className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md bg-[var(--surface)] border border-[var(--border)]/60 text-xs text-[var(--text)]"
                   >
-                    <span className="font-mono text-[11px] text-[var(--text-subtle)] w-6 shrink-0">
+                    <span className="font-mono text-[11px] text-[var(--text-subtle)] w-8 shrink-0">
                       {String(idx + 1).padStart(2, "0")}
                     </span>
                     <span className="flex-1 truncate font-medium">{choice}</span>

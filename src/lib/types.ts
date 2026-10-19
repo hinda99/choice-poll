@@ -33,7 +33,7 @@ export interface Poll {
 
 export interface CreatePollInput {
   question: string;
-  options: string[]; // Up to 100 choices
+  options: string[]; // Up to 200 choices
   isMultipleChoice: boolean;
   isEliminationMode: boolean;
   maxPerOption?: number; // Up to 10
