@@ -114,8 +114,8 @@ export async function createPoll(input: CreatePollInput): Promise<Poll> {
     throw new Error("A poll must have at least 2 non-empty choices.");
   }
 
-  if (cleanOptions.length > 25) {
-    throw new Error("A poll can have at most 25 choices.");
+  if (cleanOptions.length > 100) {
+    throw new Error("A poll can have at most 100 choices.");
   }
 
   for (const opt of cleanOptions) {

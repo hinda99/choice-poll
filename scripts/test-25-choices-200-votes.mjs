@@ -1,50 +1,50 @@
-async function test25ChoicesAnd200Votes() {
-  console.log("Testing 25 Choices and 200 Votes limit...");
+async function test100ChoicesAnd200Votes() {
+  console.log("Testing 100 Choices and 200 Votes limit...");
   const baseUrl = "http://localhost:3000";
 
-  // Test 1: Create a poll with exactly 25 choices
-  const choices25 = Array.from({ length: 25 }, (_, i) => `Option ${i + 1}`);
-  console.log(`Creating poll with ${choices25.length} choices...`);
+  // Test 1: Create a poll with exactly 100 choices
+  const choices100 = Array.from({ length: 100 }, (_, i) => `Option ${i + 1}`);
+  console.log(`Creating poll with ${choices100.length} choices...`);
 
-  const res25 = await fetch(`${baseUrl}/api/polls`, {
+  const res100 = await fetch(`${baseUrl}/api/polls`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      question: "Which of these 25 technologies do you use most?",
-      options: choices25,
+      question: "Which of these 100 technologies do you use most?",
+      options: choices100,
       isMultipleChoice: true,
       isEliminationMode: false,
       maxTotalVotes: 200,
     }),
   });
 
-  const data25 = await res25.json();
-  console.log("Poll Created Status:", res25.status, "ID:", data25.poll?.id);
-  console.log("Number of Options in Poll:", data25.poll?.options.length);
-  console.log("Max Total Votes:", data25.poll?.maxTotalVotes);
+  const data100 = await res100.json();
+  console.log("Poll Created Status:", res100.status, "ID:", data100.poll?.id);
+  console.log("Number of Options in Poll:", data100.poll?.options.length);
+  console.log("Max Total Votes:", data100.poll?.maxTotalVotes);
 
-  if (data25.poll?.options.length !== 25) {
-    throw new Error(`Expected 25 options, got ${data25.poll?.options.length}`);
+  if (data100.poll?.options.length !== 100) {
+    throw new Error(`Expected 100 options, got ${data100.poll?.options.length}`);
   }
-  if (data25.poll?.maxTotalVotes !== 200) {
-    throw new Error(`Expected maxTotalVotes 200, got ${data25.poll?.maxTotalVotes}`);
+  if (data100.poll?.maxTotalVotes !== 200) {
+    throw new Error(`Expected maxTotalVotes 200, got ${data100.poll?.maxTotalVotes}`);
   }
 
-  // Test 2: Rejecting > 25 choices (e.g. 26 choices)
-  const choices26 = Array.from({ length: 26 }, (_, i) => `Option ${i + 1}`);
-  console.log(`\nTesting rejection of ${choices26.length} choices...`);
-  const res26 = await fetch(`${baseUrl}/api/polls`, {
+  // Test 2: Rejecting > 100 choices (e.g. 101 choices)
+  const choices101 = Array.from({ length: 101 }, (_, i) => `Option ${i + 1}`);
+  console.log(`\nTesting rejection of ${choices101.length} choices...`);
+  const res101 = await fetch(`${baseUrl}/api/polls`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       question: "Too many choices test",
-      options: choices26,
+      options: choices101,
     }),
   });
-  const data26 = await res26.json();
-  console.log(`Rejection Status: ${res26.status}, Error: "${data26.error}"`);
-  if (res26.status === 200) {
-    throw new Error("Should have rejected 26 choices!");
+  const data101 = await res101.json();
+  console.log(`Rejection Status: ${res101.status}, Error: "${data101.error}"`);
+  if (res101.status === 200) {
+    throw new Error("Should have rejected 101 choices!");
   }
 
   // Test 3: Elimination mode with 10 votes per choice capacity
@@ -107,10 +107,10 @@ async function test25ChoicesAnd200Votes() {
     throw new Error("Should have blocked voting after quota reached!");
   }
 
-  console.log("\n>>> ALL TESTS FOR 25 CHOICES AND 200 VOTES PASSED 100%! <<<");
+  console.log("\n>>> ALL TESTS FOR 100 CHOICES AND 200 VOTES PASSED 100%! <<<");
 }
 
-test25ChoicesAnd200Votes().catch((err) => {
+test100ChoicesAnd200Votes().catch((err) => {
   console.error("Test failed:", err);
   process.exit(1);
 });

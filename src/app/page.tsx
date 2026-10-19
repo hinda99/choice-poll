@@ -41,7 +41,7 @@ export default function CreatePollPage() {
   const choiceInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleAddOption = () => {
-    if (options.length < 25) {
+    if (options.length < 100) {
       setOptions([...options, ""]);
       setTimeout(() => {
         const nextIndex = options.length;
@@ -83,7 +83,7 @@ export default function CreatePollPage() {
 
     if (cleanOptions.length < 2) {
       errors.options = t.create.choicesErrorMin;
-    } else if (cleanOptions.length > 25) {
+    } else if (cleanOptions.length > 100) {
       errors.options = t.create.choicesErrorMax;
     }
 
@@ -141,7 +141,7 @@ export default function CreatePollPage() {
   };
 
   const isMinChoices = options.length <= 2;
-  const isMaxChoices = options.length >= 25;
+  const isMaxChoices = options.length >= 100;
 
   return (
     <div className="space-y-8">
@@ -191,7 +191,7 @@ export default function CreatePollPage() {
                     return (
                       <div key={idx} className="flex items-center gap-2.5 group">
                         {/* Numbered index 01, 02... */}
-                        <span className="w-7 text-center font-mono text-xs font-bold text-[var(--text-subtle)] select-none shrink-0">
+                        <span className="w-8 text-center font-mono text-xs font-bold text-[var(--text-subtle)] select-none shrink-0">
                           {formattedIndex}
                         </span>
 
