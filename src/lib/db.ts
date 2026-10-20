@@ -1,11 +1,55 @@
 import fs from "fs/promises";
 import path from "path";
 import { EventEmitter } from "events";
+import { Pool as PgPool } from "pg";
 import { Poll, CreatePollInput } from "./types";
 import { fixMojibake } from "./encoding";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const DATA_FILE = path.join(DATA_DIR, "polls.json");
+
+// PostgreSQL connection pool (supports Supabase, Render PostgreSQL, Neon, etc.)
+let pgPool: PgPool | null = null;
+let pgInitialized = false;
+
+function getPgPool(): PgPool | null {
+  const connectionString =
+    process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
+  if (!connectionString) {
+    return null;
+  }
+  if (!pgPool) {
+    pgPool = new PgPool({
+      connectionString,
+      ssl:
+        connectionString.includes("localhost") ||
+        connectionString.includes("127.0.0.1")
+          ? false
+          : { rejectUnauthorized: false }, // Required for cloud databases (Render, Supabase, Neon)
+      max: 10,
+      idleTimeoutMillis: 30000,
+    });
+  }
+  return pgPool;
+}
+
+async function initPgTable(): Promise<void> {
+  const pool = getPgPool();
+  if (!pool || pgInitialized) return;
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS polls (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+    pgInitialized = true;
+  } catch (error) {
+    console.error("Failed to initialize PostgreSQL polls table:", error);
+  }
+}
 
 // In-memory cache for fast read/writes
 let pollsCache: Record<string, Poll> | null = null;
@@ -51,6 +95,27 @@ async function loadPolls(): Promise<Record<string, Poll>> {
   if (pollsCache !== null) {
     return pollsCache;
   }
+
+  // 1. If DATABASE_URL is set, load from PostgreSQL (Supabase / Render Postgres)
+  const pool = getPgPool();
+  if (pool) {
+    try {
+      await initPgTable();
+      const res = await pool.query<{ id: string; data: Poll }>(
+        "SELECT id, data FROM polls"
+      );
+      const polls: Record<string, Poll> = {};
+      for (const row of res.rows) {
+        polls[row.id] = row.data;
+      }
+      pollsCache = polls;
+      return pollsCache;
+    } catch (err) {
+      console.error("PostgreSQL query failed, falling back to local file:", err);
+    }
+  }
+
+  // 2. Fallback to local JSON file
   await ensureDataFile();
   try {
     const raw = await fs.readFile(DATA_FILE, "utf-8");
@@ -62,8 +127,40 @@ async function loadPolls(): Promise<Record<string, Poll>> {
   }
 }
 
-async function savePolls(polls: Record<string, Poll>): Promise<void> {
+async function savePolls(
+  polls: Record<string, Poll>,
+  targetPollId?: string
+): Promise<void> {
   pollsCache = polls;
+
+  // 1. If DATABASE_URL is set, save to PostgreSQL (Supabase / Render Postgres)
+  const pool = getPgPool();
+  if (pool) {
+    try {
+      await initPgTable();
+      if (targetPollId && polls[targetPollId]) {
+        await pool.query(
+          `INSERT INTO polls (id, data, updated_at)
+           VALUES ($1, $2, NOW())
+           ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`,
+          [targetPollId, JSON.stringify(polls[targetPollId])]
+        );
+      } else {
+        for (const [id, poll] of Object.entries(polls)) {
+          await pool.query(
+            `INSERT INTO polls (id, data, updated_at)
+             VALUES ($1, $2, NOW())
+             ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`,
+            [id, JSON.stringify(poll)]
+          );
+        }
+      }
+    } catch (err) {
+      console.error("Failed to save to PostgreSQL:", err);
+    }
+  }
+
+  // 2. Also persist to local JSON file for zero-config offline fallback
   await ensureDataFile();
   const nonce = Math.random().toString(36).substring(2, 8);
   const tempFile = `${DATA_FILE}.${Date.now()}-${nonce}.tmp`;
@@ -178,7 +275,7 @@ export async function createPoll(input: CreatePollInput): Promise<Poll> {
   };
 
   polls[id] = poll;
-  await savePolls(polls);
+  await savePolls(polls, id);
   return poll;
 }
 
@@ -307,7 +404,7 @@ export async function votePoll(
 
     poll.totalVotes += 1;
     polls[pollId] = poll;
-    await savePolls(polls);
+    await savePolls(polls, pollId);
 
     // Broadcast update to real-time subscribers
     pollEvents.emit(`update:${pollId}`, poll);
